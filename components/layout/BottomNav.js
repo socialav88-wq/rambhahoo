@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Compass, PlusCircle, TrendingUp, User } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import Avatar from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
@@ -60,8 +61,12 @@ export default function BottomNav() {
                 )}
               >
                 <div className="relative">
-                  <Icon size={22} strokeWidth={active ? 2.5 : 1.5} />
-                  {active && (
+                  {item.label === 'Profile' && profile ? (
+                    <Avatar src={profile.avatar_url} name={profile.display_name || profile.username} size="sm" className={`w-[26px] h-[26px] border-[1.5px] ${active ? 'border-blue-primary' : 'border-transparent'}`} />
+                  ) : (
+                    <Icon size={22} strokeWidth={active ? 2.5 : 1.5} />
+                  )}
+                  {active && item.label !== 'Profile' && (
                     <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-blue-primary rounded-full" />
                   )}
                 </div>

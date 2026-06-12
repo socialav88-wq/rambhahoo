@@ -1,6 +1,7 @@
 'use client';
 
 import { getInitials } from '@/lib/utils';
+import Image from 'next/image';
 
 const SIZES = {
   xs: 'w-6 h-6 text-[10px]',
@@ -15,11 +16,15 @@ export default function Avatar({ src, name, size = 'md', className = '' }) {
   
   if (src) {
     return (
-      <img
-        src={src}
-        alt={name || 'Avatar'}
-        className={`${sizeClass} rounded-full object-cover ring-2 ring-border-light shadow-sm ${className}`}
-      />
+      <div className={`relative ${sizeClass} rounded-full overflow-hidden ring-2 ring-border-light shadow-sm shrink-0 ${className}`}>
+        <Image
+          src={src}
+          alt={name || 'Avatar'}
+          fill
+          sizes="(max-width: 768px) 10vw, 5vw"
+          className="object-cover"
+        />
+      </div>
     );
   }
   

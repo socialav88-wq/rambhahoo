@@ -1,10 +1,35 @@
 'use client';
 
+import { useState } from 'react';
 import { Users, Activity } from 'lucide-react';
 import Button from '@/components/ui/Button';
+import { useAuthStore } from '@/store/authStore';
+import { joinLocality } from '@/app/actions/profile';
+import { formatNumber } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 export default function LocalityHeader({ locality }) {
+  const { user, profile } = useAuthStore();
+  const [isJoining, setIsJoining] = useState(false);
+  const router = useRouter();
+
   if (!locality) return null;
+
+  const isMember = profile?.locality_id === locality.id;
+
+  const handleJoin = async () => {
+    if (!user) return router.push('/login');
+    if (isMember) return;
+    setIsJoining(true);
+    const res = await joinLocality(locality.id);
+    if (res?.success) {
+      // Optimistic update of auth store profile
+      useAuthStore.getState().setProfile({ ...profile, locality_id: locality.id });
+    } else {
+      alert('Failed to join locality');
+    }
+    setIsJoining(false);
+  };
 
   return (
     <div className="bg-bg-card border border-border rounded-2xl p-6 mb-6 relative overflow-hidden shadow-sm">
@@ -31,8 +56,14 @@ export default function LocalityHeader({ locality }) {
           </div>
           
           <div className="w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
-            <Button className="w-full sm:w-auto">
-              Join Locality
+            <Button 
+              className="w-full sm:w-auto" 
+              onClick={handleJoin} 
+              disabled={isMember || isJoining}
+              loading={isJoining}
+              variant={isMember ? 'outline' : 'primary'}
+            >
+              {isMember ? 'Joined' : 'Join Locality'}
             </Button>
           </div>
         </div>
@@ -44,7 +75,7 @@ export default function LocalityHeader({ locality }) {
               <Users size={18} />
             </div>
             <div>
-              <p className="text-sm font-bold text-text-primary">12.4k</p>
+              <p className="text-sm font-bold text-text-primary">{formatNumber(locality.member_count || 1)}</p>
               <p className="text-xs text-text-dim">Members</p>
             </div>
           </div>

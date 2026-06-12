@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { MoreHorizontal, Flag, CornerDownRight } from 'lucide-react';
+import { MoreHorizontal, Flag, CornerDownRight, Trash2 } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import ReactionBar from '@/components/reactions/ReactionBar';
 import { timeAgo } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 
-export default function CommentItem({ comment, onReply, isReply = false }) {
+export default function CommentItem({ comment, onReply, onDelete, isReply = false }) {
   const [showOptions, setShowOptions] = useState(false);
   const { user } = useAuthStore();
   
@@ -42,7 +42,15 @@ export default function CommentItem({ comment, onReply, isReply = false }) {
               
               {showOptions && (
                 <div className="absolute right-0 top-full mt-1 w-32 bg-bg-card border border-border rounded-lg shadow-md z-10 py-1 animate-fade-in">
-                  <button className="w-full text-left px-3 py-1.5 text-xs text-accent-red hover:bg-bg-card-hover flex items-center gap-2">
+                  {user?.id === author?.id && (
+                    <button 
+                      onClick={() => onDelete && onDelete(id)}
+                      className="w-full text-left px-3 py-1.5 text-xs text-accent-red hover:bg-bg-card-hover flex items-center gap-2"
+                    >
+                      <Trash2 size={12} /> Delete
+                    </button>
+                  )}
+                  <button className="w-full text-left px-3 py-1.5 text-xs text-text-dim hover:bg-bg-card-hover flex items-center gap-2">
                     <Flag size={12} /> Report
                   </button>
                 </div>
@@ -74,7 +82,7 @@ export default function CommentItem({ comment, onReply, isReply = false }) {
           <div className="mt-2 relative">
             <div className="absolute left-[-26px] top-0 bottom-6 w-px bg-border-light" />
             {comment.replies.map(reply => (
-              <CommentItem key={reply.id} comment={reply} isReply onReply={onReply} />
+              <CommentItem key={reply.id} comment={reply} isReply onReply={onReply} onDelete={onDelete} />
             ))}
           </div>
         )}

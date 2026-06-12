@@ -79,3 +79,25 @@ export async function getUserReactions(postId) {
     .from('reactions').select('emoji').eq('user_id', user.id).eq('post_id', postId);
   return (data || []).map(r => r.emoji);
 }
+
+// ===== DELETE COMMENT =====
+export async function deleteComment(commentId, postId) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Not authenticated' };
+
+  try {
+    const { error } = await supabase
+      .from('comments')
+      .delete()
+      .eq('id', commentId)
+      .eq('user_id', user.id);
+    
+    if (error) return { error: error.message };
+    
+    revalidatePath(`/post/${postId}`);
+    return { success: true };
+  } catch (err) {
+    return { error: 'Failed to delete comment' };
+  }
+}

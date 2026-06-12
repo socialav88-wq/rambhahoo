@@ -9,7 +9,7 @@ import ReactionBar from '@/components/reactions/ReactionBar';
 import { timeAgo, formatNumber } from '@/lib/utils';
 import { useSavedPosts } from '@/hooks/useSavedPosts';
 
-export default function MemeCard({ post }) {
+export default function ImageCard({ post }) {
   const { isSaved, toggleSave } = useSavedPosts();
   const {
     id, title, image_url, slug, tags = [],
@@ -25,16 +25,18 @@ export default function MemeCard({ post }) {
       {/* Image */}
       <Link href={`/post/${slug}`} className="block relative">
         {image_url ? (
-          <div className="relative w-full aspect-[4/3] bg-bg-elevated">
-            <img
+          <div className="relative w-full aspect-[4/5] bg-bg-elevated">
+            <Image
               src={image_url}
               alt={title}
-              className="w-full h-full object-cover"
-              loading="lazy"
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              className="object-cover"
+              priority={false}
             />
           </div>
         ) : (
-          <div className="w-full aspect-[4/3] bg-bg-elevated flex items-center justify-center">
+          <div className="w-full aspect-[4/5] bg-bg-elevated flex items-center justify-center">
             <ImageIcon size={48} className="text-text-dim" />
           </div>
         )}

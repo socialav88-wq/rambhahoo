@@ -64,6 +64,32 @@ export async function updateProfile(formData) {
   return { success: true };
 }
 
+// ===== JOIN LOCALITY =====
+export async function joinLocality(localityId) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Not authenticated' };
+
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ locality_id: localityId })
+      .eq('id', user.id);
+    
+    if (error) return { error: error.message };
+    
+    // Optionally increment member_count in localities table if it exists
+    try {
+      await supabase.rpc('increment_locality_member_count', { loc_id: localityId });
+    } catch (e) {}
+
+    revalidatePath('/');
+    return { success: true };
+  } catch (err) {
+    return { error: 'Failed to join locality' };
+  }
+}
+
 export async function fetchUserProfile(username) {
   const supabase = await createClient();
   const { data, error } = await supabase

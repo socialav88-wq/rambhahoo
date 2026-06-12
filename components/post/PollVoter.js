@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { formatNumber } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
-export default function PollVoter({ postId, options = [], compact = false }) {
+export default function PollVoter({ postId, options = [], initialVotedOptionId = null, compact = false }) {
   const { user } = useAuthStore();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -21,7 +21,7 @@ export default function PollVoter({ postId, options = [], compact = false }) {
     return map;
   });
   const [total, setTotal] = useState(initialTotal);
-  const [voted, setVoted] = useState(null); // optionId user voted for
+  const [voted, setVoted] = useState(initialVotedOptionId); // optionId user voted for
   const [error, setError] = useState('');
 
   const handleVote = (optionId) => {

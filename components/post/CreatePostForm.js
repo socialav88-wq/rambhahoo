@@ -151,10 +151,10 @@ export default function CreatePostForm() {
       }
       tFormData.end(`locality=${locality || 'none'} tags="${tags || 'none'}" gps=${gpsLocation ? 'yes' : 'no'}`);
 
-      // ── STEP 3: Image upload (meme only) ───────────────────────────────
-      if (postType === 'meme') {
+      // ── STEP 3: Image upload (image only) ───────────────────────────────
+      if (postType === 'image') {
         if (!imageFile) {
-          setError('Please upload an image for meme posts.');
+          setError('Please upload an image for image posts.');
           setIsSubmitting(false);
           setUploadStatus('');
           console.groupEnd();
@@ -329,7 +329,7 @@ export default function CreatePostForm() {
               }`}
             >
               {t.value === 'discussion' && <MessageSquare size={24} />}
-              {t.value === 'meme'       && <ImageIcon size={24} />}
+              {t.value === 'image'      && <ImageIcon size={24} />}
               {t.value === 'poll'       && <BarChart3 size={24} />}
               <span className="text-sm font-medium">{t.label}</span>
             </button>
@@ -353,8 +353,8 @@ export default function CreatePostForm() {
           <p className="text-xs text-text-dim mt-1 text-right">{title.length}/100</p>
         </div>
 
-        {/* Image Upload (meme) */}
-        {postType === 'meme' && (
+        {/* Image Upload (image) */}
+        {postType === 'image' && (
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1.5">
               Upload Image (JPG, PNG, WEBP) <span className="text-accent-red">*</span>

@@ -9,7 +9,7 @@ import { Flame } from 'lucide-react';
 import { fetchFeeds } from '@/app/actions/posts';
 
 
-export default function FeedContainer({ initialFilter = 'hot', localitySlug = null }) {
+export default function FeedContainer({ initialFilter = 'new', localitySlug = null }) {
   const [filter, setFilter] = useState(initialFilter);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +74,7 @@ export default function FeedContainer({ initialFilter = 'hot', localitySlug = nu
           </div>
           <h3 className="text-lg font-semibold text-text-primary mb-2">No posts found</h3>
           <p className="text-text-muted text-sm mb-6 max-w-sm">
-            Be the first to start a conversation in this area. Share news, ask a question, or post a meme!
+            Be the first to start a conversation in this area. Share news, ask a question, or post a picture!
           </p>
           <Button variant="primary">Create Post</Button>
         </div>

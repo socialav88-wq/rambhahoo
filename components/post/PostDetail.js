@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, MessageSquare, Share2, Bookmark, MoreHorizontal, AlertCircle } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Share2, Bookmark, MoreHorizontal, AlertCircle, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import Avatar from '@/components/ui/Avatar';
 import Badge from '@/components/ui/Badge';
 import ReactionBar from '@/components/reactions/ReactionBar';
@@ -11,11 +12,13 @@ import PollVoter from '@/components/post/PollVoter';
 import { timeAgo, formatNumber } from '@/lib/utils';
 import { useSavedPosts } from '@/hooks/useSavedPosts';
 import { useAuthStore } from '@/store/authStore';
+import { deletePost } from '@/app/actions/posts';
 
 export default function PostDetail({ post }) {
   const router = useRouter();
   const { isSaved, toggleSave } = useSavedPosts();
   const { user } = useAuthStore();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!post) {
     return (
@@ -81,9 +84,26 @@ export default function PostDetail({ post }) {
             </div>
           </div>
           
-          <button className="p-2 text-text-dim hover:text-text-primary hover:bg-bg-elevated rounded-lg transition-colors">
-            <MoreHorizontal size={20} />
-          </button>
+          {user?.id === author?.id ? (
+            <button 
+              onClick={async () => {
+                if (confirm('Are you sure you want to delete this post?')) {
+                  setIsDeleting(true);
+                  const res = await deletePost(id);
+                  if (res?.success) router.push('/');
+                  else { alert('Failed to delete post'); setIsDeleting(false); }
+                }
+              }}
+              disabled={isDeleting}
+              className="p-2 text-text-dim hover:text-accent-red hover:bg-bg-elevated rounded-lg transition-colors"
+            >
+              <Trash2 size={20} />
+            </button>
+          ) : (
+            <button className="p-2 text-text-dim hover:text-text-primary hover:bg-bg-elevated rounded-lg transition-colors">
+              <MoreHorizontal size={20} />
+            </button>
+          )}
         </div>
 
         {/* Title & Content */}
@@ -91,7 +111,7 @@ export default function PostDetail({ post }) {
           {title}
         </h1>
 
-        {post_type === 'meme' && image_url && (
+        {post_type === 'image' && image_url && (
           <div className="relative w-full rounded-xl overflow-hidden bg-bg-elevated mb-4">
             <img 
               src={image_url} 
@@ -113,7 +133,7 @@ export default function PostDetail({ post }) {
         {post_type === 'poll' && poll_options.length > 0 && (
           <div className="mb-6 bg-bg-elevated/50 p-4 rounded-xl border border-border">
             <h3 className="text-sm font-semibold text-text-dim mb-3 uppercase tracking-wide">Cast your vote</h3>
-            <PollVoter postId={id} options={poll_options} />
+            <PollVoter postId={id} options={poll_options} initialVotedOptionId={post.user_voted_option_id} />
           </div>
         )}
 

@@ -80,7 +80,25 @@ export async function fetchFeeds(filter = 'new', localitySlug = null, lat = null
     summaryMap[r.post_id][r.emoji] = (summaryMap[r.post_id][r.emoji] || 0) + 1;
   });
 
-  return data.map(post => ({ ...post, reactions_summary: summaryMap[post.id] || {} }));
+  let userVotesMap = {};
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user && postIds.length > 0) {
+    const { data: pollVotes } = await supabase
+      .from('poll_votes')
+      .select('post_id, poll_option_id')
+      .eq('user_id', user.id)
+      .in('post_id', postIds);
+      
+    (pollVotes || []).forEach(v => {
+      userVotesMap[v.post_id] = v.poll_option_id;
+    });
+  }
+
+  return data.map(post => ({ 
+    ...post, 
+    reactions_summary: summaryMap[post.id] || {},
+    user_voted_option_id: userVotesMap[post.id] || null
+  }));
 }
 
 // ===== FETCH SINGLE POST =====
@@ -109,7 +127,19 @@ export async function fetchPostBySlug(slug) {
   const summary = {};
   (reactions || []).forEach(r => { summary[r.emoji] = (summary[r.emoji] || 0) + 1; });
 
-  return { ...data, reactions_summary: summary };
+  let userVotedOptionId = null;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user && data.post_type === 'poll') {
+    const { data: vote } = await supabase
+      .from('poll_votes')
+      .select('poll_option_id')
+      .eq('user_id', user.id)
+      .eq('post_id', data.id)
+      .single();
+    if (vote) userVotedOptionId = vote.poll_option_id;
+  }
+
+  return { ...data, reactions_summary: summary, user_voted_option_id: userVotedOptionId };
 }
 
 // ===== CREATE POST =====
@@ -189,10 +219,10 @@ export async function createPost(formData) {
     return { error: 'Title is required.' };
   }
 
-  const validTypes = ['discussion', 'meme', 'poll'];
+  const validTypes = ['discussion', 'image', 'poll'];
   if (!validTypes.includes(post_type)) {
     tParse.fail(`invalid post_type: ${post_type}`);
-    return { error: `Invalid post type "${post_type}". Must be discussion, meme, or poll.` };
+    return { error: `Invalid post type "${post_type}". Must be discussion, image, or poll.` };
   }
   tParse.end(`title="${title}" type=${post_type}`);
 
@@ -400,4 +430,26 @@ export async function fetchHotDiscussions() {
     .limit(4);
   if (error || !data) return [];
   return data.map(d => ({ title: d.title, slug: d.slug, comments: d.comment_count }));
+}
+
+// ===== DELETE POST =====
+export async function deletePost(postId) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Not authenticated' };
+
+  try {
+    const { error } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', postId)
+      .eq('user_id', user.id);
+    
+    if (error) return { error: error.message };
+    
+    revalidatePath('/');
+    return { success: true };
+  } catch (err) {
+    return { error: 'Failed to delete post' };
+  }
 }

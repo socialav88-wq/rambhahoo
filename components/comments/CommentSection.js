@@ -7,7 +7,7 @@ import Avatar from '@/components/ui/Avatar';
 import Button from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
 import { fetchComments } from '@/app/actions/posts';
-import { addComment } from '@/app/actions/interactions';
+import { addComment, deleteComment } from '@/app/actions/interactions';
 import { useRouter } from 'next/navigation';
 
 export default function CommentSection({ postId }) {
@@ -77,6 +77,21 @@ export default function CommentSection({ postId }) {
     if (input) input.focus();
   };
 
+  const handleDelete = async (commentId) => {
+    if (!confirm('Are you sure you want to delete this comment?')) return;
+    
+    // Optimistic delete
+    setComments(prev => prev.filter(c => c.id !== commentId && !c.replies?.some(r => r.id === commentId)));
+    
+    const result = await deleteComment(commentId, postId);
+    if (result?.error) {
+      alert(result.error);
+      // Re-fetch comments on failure
+      const data = await fetchComments(postId);
+      setComments(data || []);
+    }
+  };
+
   return (
     <div className="mt-6 border-t border-border pt-6">
       <h3 className="text-lg font-semibold text-text-primary font-[family-name:var(--font-poppins)] mb-6 flex items-center gap-2">
@@ -144,6 +159,7 @@ export default function CommentSection({ postId }) {
               key={comment.id} 
               comment={comment} 
               onReply={handleReply} 
+              onDelete={handleDelete}
             />
           ))
         ) : (

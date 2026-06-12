@@ -1,10 +1,12 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, TrendingUp, Search, Settings, MapPin, Flame } from 'lucide-react';
 import { LOCALITIES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
 
 const NAV_LINKS = [
   { label: 'Home', href: '/', icon: Home },
@@ -15,6 +17,18 @@ const NAV_LINKS = [
 
 export default function LeftSidebar() {
   const pathname = usePathname();
+  const [localities, setLocalities] = useState(LOCALITIES);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.from('localities').select('*').order('name');
+        if (data && data.length > 0) setLocalities(data);
+      } catch (e) {}
+    }
+    load();
+  }, []);
 
   return (
     <aside className="hidden lg:block w-64 shrink-0">
@@ -49,7 +63,7 @@ export default function LeftSidebar() {
             <h3 className="text-xs font-semibold uppercase tracking-wider text-text-dim">Localities</h3>
           </div>
           <div className="space-y-0.5 max-h-[400px] overflow-y-auto no-scrollbar">
-            {LOCALITIES.map((locality) => {
+            {localities.map((locality) => {
               const active = pathname === `/${locality.slug}`;
               return (
                 <Link
@@ -67,6 +81,12 @@ export default function LeftSidebar() {
                 </Link>
               );
             })}
+          </div>
+          <div className="mt-2 pt-2 border-t border-border">
+            <Link href="/create-locality" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-blue-primary hover:bg-bg-card-hover transition-all">
+              <span className="text-base">➕</span>
+              <span className="font-medium">Create Locality</span>
+            </Link>
           </div>
         </div>
 
