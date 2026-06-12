@@ -1,0 +1,113 @@
+'use server';
+
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
+
+export async function updateProfile(formData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: 'Not authenticated' };
+  }
+
+  const displayName = formData.get('displayName');
+  const bio = formData.get('bio');
+  const avatarFile = formData.get('avatar');
+
+  let avatarUrl = undefined;
+
+  // Handle avatar upload if exists
+  if (avatarFile && avatarFile.size > 0) {
+    const fileExt = avatarFile.name.split('.').pop();
+    const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+    const filePath = `avatars/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('RAMBHAHOO')
+      .upload(filePath, avatarFile);
+
+    if (uploadError) {
+      console.error('Avatar upload error:', uploadError);
+      return { error: 'Failed to upload avatar' };
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('RAMBHAHOO')
+      .getPublicUrl(filePath);
+      
+    avatarUrl = publicUrl;
+  }
+
+  // Update profiles table
+  const updates = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (displayName !== null) updates.display_name = displayName;
+  if (bio !== null) updates.bio = bio;
+  if (avatarUrl !== undefined) updates.avatar_url = avatarUrl;
+
+  const { error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', user.id);
+
+  if (error) {
+    console.error('Profile update error:', error);
+    return { error: error.message };
+  }
+
+  revalidatePath('/profile');
+  revalidatePath('/settings');
+  
+  return { success: true };
+}
+
+export async function fetchUserProfile(username) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('username', username)
+    .single();
+    
+  if (error || !data) return null;
+  
+  // Fetch stats (posts count, comments count, total reactions received)
+  const { count: postsCount } = await supabase
+    .from('posts')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', data.id);
+    
+  const { count: commentsCount } = await supabase
+    .from('comments')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', data.id);
+    
+  const { data: reactionsData } = await supabase
+    .from('posts')
+    .select('reaction_count')
+    .eq('user_id', data.id);
+    
+  const totalKarma = (reactionsData || []).reduce((acc, curr) => acc + (curr.reaction_count || 0), 0) + ((postsCount || 0) * 5) + ((commentsCount || 0) * 2);
+  
+  return {
+    ...data,
+    posts_count: postsCount || 0,
+    comments_count: commentsCount || 0,
+    karma: totalKarma
+  };
+}
+
+export async function fetchUserPosts(userId) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*, profiles:user_id (username, display_name, avatar_url), localities:locality_id (slug, name, emoji)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+    
+  if (error) return [];
+  return data || [];
+}
