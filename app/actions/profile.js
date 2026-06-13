@@ -13,6 +13,7 @@ export async function updateProfile(formData) {
 
   const displayName = formData.get('displayName');
   const bio = formData.get('bio');
+  const username = formData.get('username');
   const avatarFile = formData.get('avatar');
 
   let avatarUrl = undefined;
@@ -46,6 +47,7 @@ export async function updateProfile(formData) {
 
   if (displayName !== null) updates.display_name = displayName;
   if (bio !== null) updates.bio = bio;
+  if (username !== null && username.trim() !== '') updates.username = username.trim().toLowerCase();
   if (avatarUrl !== undefined) updates.avatar_url = avatarUrl;
 
   const { error } = await supabase
@@ -55,6 +57,7 @@ export async function updateProfile(formData) {
 
   if (error) {
     console.error('Profile update error:', error);
+    if (error.code === '23505') return { error: 'Username is already taken' };
     return { error: error.message };
   }
 

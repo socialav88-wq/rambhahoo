@@ -112,11 +112,11 @@ export default function PostDetail({ post }) {
         </h1>
 
         {post_type === 'image' && image_url && (
-          <div className="relative w-full rounded-xl overflow-hidden bg-bg-elevated mb-4">
+          <div className="relative w-full aspect-[4/5] rounded-xl overflow-hidden bg-bg-elevated mb-6 shadow-sm border border-border">
             <img 
               src={image_url} 
               alt={title} 
-              className="w-full max-h-[70vh] object-contain"
+              className="w-full h-full object-cover"
             />
           </div>
         )}

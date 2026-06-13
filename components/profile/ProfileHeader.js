@@ -1,15 +1,29 @@
 'use client';
 
-import { MapPin, Calendar, Link as LinkIcon, Settings, UserPlus, Mail } from 'lucide-react';
+import { useState, useTransition, useEffect } from 'react';
+import { MapPin, Calendar, Link as LinkIcon, Settings, UserPlus, CheckCircle2, Edit3 } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import { useAuthStore } from '@/store/authStore';
 import { logout } from '@/app/actions/auth';
+import { toggleCircle, checkInCircle } from '@/app/actions/circle';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function ProfileHeader({ profile, isOwnProfile = false }) {
   const router = useRouter();
+  const { user } = useAuthStore();
+  const [isPending, startTransition] = useTransition();
+  const [inCircle, setInCircle] = useState(false);
+  const [followersCount, setFollowersCount] = useState(profile?.followers_count || 0);
+  
+  // Check circle status on mount
+  useEffect(() => {
+    if (!isOwnProfile && user && profile) {
+      checkInCircle(profile.id).then(setInCircle);
+    }
+  }, [isOwnProfile, user, profile]);
   
   if (!profile) return null;
 
@@ -18,9 +32,25 @@ export default function ProfileHeader({ profile, isOwnProfile = false }) {
     router.push('/login');
   };
 
+  const handleToggleCircle = () => {
+    if (!user) return router.push('/login');
+    
+    // Optimistic UI update for 0ms latency
+    setInCircle(!inCircle);
+    setFollowersCount(prev => inCircle ? prev - 1 : prev + 1);
+    
+    startTransition(async () => {
+      const res = await toggleCircle(profile.id);
+      if (res?.error) {
+        // Rollback on error
+        setInCircle(!inCircle);
+        setFollowersCount(prev => inCircle ? prev + 1 : prev - 1);
+      }
+    });
+  };
+
   return (
-    <div className="bg-bg-card rounded-3xl overflow-hidden mb-6 shadow-sm border border-border">
-      
+    <div className="bg-bg-card rounded-3xl overflow-hidden mb-6 shadow-sm border border-border animate-fade-in">
       <div className="px-6 sm:px-10 py-10 flex flex-col items-center text-center relative">
         {/* Avatar & Main Actions */}
         <div className="relative inline-block mb-4">
@@ -50,18 +80,27 @@ export default function ProfileHeader({ profile, isOwnProfile = false }) {
           
           <div className="flex gap-3 justify-center mb-6">
             {isOwnProfile ? (
-              <Button variant="outline" className="gap-2 rounded-full px-6 font-semibold shadow-sm hover:shadow" onClick={handleLogout}>
-                <Settings size={18} />
-                <span>Log Out</span>
-              </Button>
+              <>
+                <Link href="/settings/profile">
+                  <Button variant="outline" className="gap-2 rounded-full px-6 font-semibold shadow-sm hover:shadow text-text-primary">
+                    <Edit3 size={18} />
+                    <span>Edit Profile</span>
+                  </Button>
+                </Link>
+                <Button variant="ghost" className="gap-2 rounded-full px-4 text-text-dim hover:text-accent-red" onClick={handleLogout}>
+                  <Settings size={18} />
+                </Button>
+              </>
             ) : (
               <>
-                <Button variant="outline" className="rounded-full px-4 text-text-dim hover:text-text-primary">
-                  <Mail size={18} />
-                </Button>
-                <Button variant="primary" className="gap-2 rounded-full px-8 font-semibold shadow-md shadow-blue-primary/20">
-                  <UserPlus size={18} />
-                  <span>Follow</span>
+                <Button 
+                  onClick={handleToggleCircle}
+                  disabled={isPending}
+                  variant={inCircle ? 'outline' : 'primary'} 
+                  className={`gap-2 rounded-full px-8 font-semibold shadow-sm ${inCircle ? 'text-accent-green border-accent-green/30 bg-accent-green/5' : 'shadow-blue-primary/20'}`}
+                >
+                  {inCircle ? <CheckCircle2 size={18} /> : <UserPlus size={18} />}
+                  <span>{inCircle ? 'In My Circle' : 'Add to Circle'}</span>
                 </Button>
               </>
             )}
@@ -107,12 +146,12 @@ export default function ProfileHeader({ profile, isOwnProfile = false }) {
             <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Reputation</span>
           </div>
           <div className="bg-bg-elevated/50 rounded-2xl p-4 text-center hover:bg-bg-elevated transition-colors cursor-pointer">
-            <span className="block font-black text-2xl text-text-primary mb-1">{profile.followers_count || 0}</span>
-            <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Followers</span>
+            <span className="block font-black text-2xl text-text-primary mb-1">{followersCount}</span>
+            <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Circled By</span>
           </div>
           <div className="bg-bg-elevated/50 rounded-2xl p-4 text-center hover:bg-bg-elevated transition-colors cursor-pointer">
             <span className="block font-black text-2xl text-text-primary mb-1">{profile.following_count || 0}</span>
-            <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Following</span>
+            <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">In My Circle</span>
           </div>
         </div>
       </div>
