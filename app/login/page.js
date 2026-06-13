@@ -1,4 +1,5 @@
 import LoginForm from '@/components/auth/LoginForm';
+import PublicLandingLayout from '@/components/landing/PublicLandingLayout';
 import { generateMetadata } from '@/lib/seo';
 
 export const metadata = generateMetadata({
@@ -9,8 +10,8 @@ export const metadata = generateMetadata({
 
 export default function LoginPage() {
   return (
-    <div className="min-h-[80vh] flex items-center justify-center py-12 px-4 animate-fade-in">
+    <PublicLandingLayout>
       <LoginForm />
-    </div>
+    </PublicLandingLayout>
   );
 }

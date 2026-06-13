@@ -1,5 +1,6 @@
 import { Inter, Poppins } from "next/font/google";
 import MainLayout from "@/components/layout/MainLayout";
+import LayoutWrapper from "@/components/layout/LayoutWrapper";
 import AuthProvider from "@/components/providers/AuthProvider";
 import RealtimeProvider from "@/components/providers/RealtimeProvider";
 import { Toaster } from "react-hot-toast";
@@ -79,9 +80,9 @@ export default function RootLayout({ children }) {
                 ])
               }}
             />
-            <MainLayout>
+            <LayoutWrapper mainLayout={<MainLayout>{children}</MainLayout>}>
               {children}
-            </MainLayout>
+            </LayoutWrapper>
           </RealtimeProvider>
         </AuthProvider>
       </body>
