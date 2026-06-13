@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { ThumbsUp, MessageSquare, Share2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { ThumbsUp, MessageSquare, Share2, SmilePlus } from 'lucide-react';
 import { formatNumber } from '@/lib/utils';
 import ReactionBar from '@/components/reactions/ReactionBar';
 import { REACTIONS } from '@/lib/constants';
@@ -10,10 +11,16 @@ import { toggleReaction } from '@/app/actions/interactions';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 
+const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
+
 export default function PostFooter({ post }) {
   const { user } = useAuthStore();
   const [showPicker, setShowPicker] = useState(false);
+  const [showFullPicker, setShowFullPicker] = useState(false);
   const [isReacting, setIsReacting] = useState(false);
+  
+  // Floating emojis state
+  const [floatingEmojis, setFloatingEmojis] = useState([]);
   
   // Local optimistic state for reactions
   const [localReactions, setLocalReactions] = useState(post.reactions_summary || {});
@@ -43,8 +50,16 @@ export default function PostFooter({ post }) {
       return;
     }
     setShowPicker(false);
+    setShowFullPicker(false);
     setIsReacting(true);
     
+    // Add floating animation
+    const id = Date.now();
+    setFloatingEmojis(prev => [...prev, { id, emoji }]);
+    setTimeout(() => {
+      setFloatingEmojis(prev => prev.filter(e => e.id !== id));
+    }, 1200);
+
     const isDefaultEmoji = emoji === defaultEmoji;
     
     // Optimistic update
@@ -58,13 +73,11 @@ export default function PostFooter({ post }) {
       }
     }
     
-    // We assume toggle logic here. If we are toggling on: +1, off: -1
-    // For simplicity, we just assume we are adding unless it's already there (for the default emoji)
     let newCount;
     if (isDefaultEmoji) {
       newCount = hasLiked ? Math.max(0, currentCount - 1) : currentCount + 1;
     } else {
-      newCount = currentCount + 1; // picker always acts as add initially
+      newCount = currentCount + 1;
     }
     
     setLocalReactions({
@@ -86,10 +99,11 @@ export default function PostFooter({ post }) {
       if (isDefaultEmoji) setHasLiked(false);
       setLocalReactions({
         ...localReactions,
-        [emoji]: Math.max(0, currentCount - (isDefaultEmoji ? 0 : 1)) // If it was default emoji, we already subtracted it optimistically
+        [emoji]: Math.max(0, currentCount - (isDefaultEmoji ? 0 : 1))
       });
     } else if (res?.action === 'added') {
       if (isDefaultEmoji) setHasLiked(true);
+      toast.success(`Reacted with ${emoji}`);
     }
     setIsReacting(false);
   };
@@ -108,9 +122,19 @@ export default function PostFooter({ post }) {
   };
 
   return (
-    <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+    <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50 relative">
+      {/* Floating Emojis Overlay */}
+      {floatingEmojis.map((floating) => (
+        <div 
+          key={floating.id} 
+          className="absolute left-8 bottom-8 text-4xl animate-float-up pointer-events-none z-50 drop-shadow-md"
+        >
+          {floating.emoji}
+        </div>
+      ))}
+
       <div className="flex items-center gap-2 relative" onMouseLeave={handleMouseLeave}>
-        <div onMouseEnter={handleMouseEnter} className="relative z-10">
+        <div onMouseEnter={handleMouseEnter} className="relative z-10 flex items-center">
            <button 
              onClick={(e) => { e.preventDefault(); handleReact(defaultEmoji); }}
              disabled={isReacting}
@@ -123,10 +147,18 @@ export default function PostFooter({ post }) {
              <ThumbsUp size={18} className={hasLiked ? 'fill-current' : ''} />
              <span className="text-xs font-medium">Like</span>
            </button>
+           
+           {/* Custom Emoji Picker Trigger */}
+           <button
+             onClick={(e) => { e.preventDefault(); setShowFullPicker(!showFullPicker); setShowPicker(false); }}
+             className="ml-1 p-2 text-text-dim hover:bg-bg-elevated hover:text-blue-primary rounded-full transition-all active:scale-95"
+           >
+             <SmilePlus size={18} />
+           </button>
         </div>
 
         {/* Reaction picker popover */}
-        {showPicker && (
+        {showPicker && !showFullPicker && (
           <div 
             className="absolute bottom-full left-0 mb-2 flex gap-1 p-2 bg-bg-card border border-border rounded-xl shadow-md z-20 animate-bounce-in"
             onMouseEnter={() => { if (timeoutRef.current) clearTimeout(timeoutRef.current); }}
@@ -141,6 +173,21 @@ export default function PostFooter({ post }) {
                  {emoji}
                </button>
              ))}
+          </div>
+        )}
+
+        {/* Full Emoji Picker */}
+        {showFullPicker && (
+          <div className="absolute bottom-full left-0 mb-2 z-50 animate-slide-up shadow-2xl rounded-2xl overflow-hidden border border-border/50">
+            <EmojiPicker 
+              onEmojiClick={(emojiData) => handleReact(emojiData.emoji)}
+              theme="light"
+              lazyLoadEmojis={true}
+              searchDisabled={false}
+              skinTonesDisabled={true}
+              previewConfig={{ showPreview: false }}
+              height={350}
+            />
           </div>
         )}
 

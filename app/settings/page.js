@@ -8,6 +8,7 @@ import Avatar from '@/components/ui/Avatar';
 import Button from '@/components/ui/Button';
 import { User, Image as ImageIcon, Camera } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import toast from 'react-hot-toast';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -74,7 +75,7 @@ export default function SettingsPage() {
           .upload(filePath, fileToUpload, { contentType: fileToUpload.type });
 
         if (uploadError) {
-          alert('Failed to upload image: ' + uploadError.message);
+          toast.error('Failed to upload image: ' + uploadError.message);
           setIsSubmitting(false);
           return;
         }
@@ -82,7 +83,7 @@ export default function SettingsPage() {
         const { data } = supabase.storage.from('RAMBHAHOO').getPublicUrl(filePath);
         finalAvatarUrl = data.publicUrl;
       } catch (err) {
-        alert('Upload error: ' + err.message);
+        toast.error('Upload error: ' + err.message);
         setIsSubmitting(false);
         return;
       }
@@ -99,8 +100,9 @@ export default function SettingsPage() {
     const result = await updateProfile(formData);
 
     if (result?.error) {
-      alert(result.error);
+      toast.error(result.error);
     } else {
+      toast.success('Profile updated successfully!');
       // Refresh profile in store after update
       try {
         const supabase = createClient();
@@ -115,7 +117,6 @@ export default function SettingsPage() {
       } catch (refreshErr) {
         console.warn('Could not refresh profile after update:', refreshErr.message);
       }
-      alert('Profile updated successfully!');
       router.push(`/profile/${profile.username}`);
     }
     setIsSubmitting(false);

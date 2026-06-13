@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/authStore';
 import { fetchComments } from '@/app/actions/posts';
 import { addComment, deleteComment } from '@/app/actions/interactions';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 export default function CommentSection({ postId }) {
   const [newComment, setNewComment] = useState('');
@@ -32,12 +33,13 @@ export default function CommentSection({ postId }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newComment.trim()) return;
-    
     if (!user) {
+      toast.error("You must be logged in to comment.");
       router.push('/login');
       return;
     }
+
+    if (!newComment.trim()) return;
     
     setIsSubmitting(true);
     
@@ -61,11 +63,12 @@ export default function CommentSection({ postId }) {
     const result = await addComment(postId, content);
     if (result?.error) {
       // Rollback on error
-      alert(result.error);
+      toast.error(result.error);
       setComments((prev) => prev.filter(c => c.id !== optimisticComment.id));
     } else if (result?.comment) {
       // Replace optimistic with real
       setComments((prev) => prev.map(c => c.id === optimisticComment.id ? result.comment : c));
+      toast.success('Comment posted!');
     }
     
     setIsSubmitting(false);
