@@ -38,10 +38,6 @@ export default function SettingsPage() {
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert('Image must be less than 2MB');
-        return;
-      }
       setAvatarFile(file);
       setAvatarPreview(URL.createObjectURL(file));
     }
@@ -53,17 +49,29 @@ export default function SettingsPage() {
     
     let finalAvatarUrl = profile.avatar_url;
 
-    // Client-side image upload (more reliable than passing File to server action)
+    // Client-side image upload
     if (avatarFile) {
       try {
+        let fileToUpload = avatarFile;
+        
+        // Automatically compress if > 2MB
+        if (avatarFile.size > 2 * 1024 * 1024) {
+          const { default: imageCompression } = await import('browser-image-compression');
+          fileToUpload = await imageCompression(avatarFile, {
+            maxSizeMB: 1.5,
+            maxWidthOrHeight: 800,
+            useWebWorker: true,
+          });
+        }
+
         const supabase = createClient();
-        const fileExt = avatarFile.name.split('.').pop();
+        const fileExt = fileToUpload.name.split('.').pop() || 'jpg';
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
         const filePath = `${user.id}/avatars/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('RAMBHAHOO')
-          .upload(filePath, avatarFile, { contentType: avatarFile.type });
+          .upload(filePath, fileToUpload, { contentType: fileToUpload.type });
 
         if (uploadError) {
           alert('Failed to upload image: ' + uploadError.message);

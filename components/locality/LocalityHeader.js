@@ -21,10 +21,10 @@ export default function LocalityHeader({ locality }) {
     if (!user) return router.push('/login');
     if (isMember) return;
     setIsJoining(true);
-    const res = await joinLocality(locality.id);
-    if (res?.success) {
+    const res = await joinLocality(locality.slug);
+    if (res?.success && res.localityId) {
       // Optimistic update of auth store profile
-      useAuthStore.getState().setProfile({ ...profile, locality_id: locality.id });
+      useAuthStore.getState().setProfile({ ...profile, locality_id: res.localityId });
     } else {
       alert('Failed to join locality');
     }
@@ -55,15 +55,22 @@ export default function LocalityHeader({ locality }) {
             </p>
           </div>
           
-          <div className="w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
+          <div className="w-full sm:w-auto shrink-0 mt-2 sm:mt-0 flex gap-2">
+            <Button
+              className="w-full sm:w-auto"
+              variant="outline"
+              onClick={() => router.push(`/create?locality=${locality.slug}`)}
+            >
+              Create Post
+            </Button>
             <Button 
               className="w-full sm:w-auto" 
               onClick={handleJoin} 
               disabled={isMember || isJoining}
               loading={isJoining}
-              variant={isMember ? 'outline' : 'primary'}
+              variant={isMember ? 'secondary' : 'primary'}
             >
-              {isMember ? 'Joined' : 'Join Locality'}
+              {isMember ? 'Joined' : 'Join'}
             </Button>
           </div>
         </div>

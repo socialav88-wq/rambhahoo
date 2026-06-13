@@ -45,12 +45,23 @@ export async function updateProfile(formData) {
 }
 
 // ===== JOIN LOCALITY =====
-export async function joinLocality(localityId) {
+export async function joinLocality(localitySlug) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Not authenticated' };
 
   try {
+    // Resolve slug to id
+    const { data: loc, error: locErr } = await supabase
+      .from('localities')
+      .select('id')
+      .eq('slug', localitySlug)
+      .single();
+
+    if (locErr || !loc) return { error: 'Locality not found in database' };
+
+    const localityId = loc.id;
+
     const { error } = await supabase
       .from('profiles')
       .update({ locality_id: localityId })
@@ -64,7 +75,7 @@ export async function joinLocality(localityId) {
     } catch (e) {}
 
     revalidatePath('/');
-    return { success: true };
+    return { success: true, localityId };
   } catch (err) {
     return { error: 'Failed to join locality' };
   }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Image as ImageIcon, BarChart3, MapPin, X, MessageSquare, CheckCircle2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { POST_TYPES, LOCALITIES } from '@/lib/constants';
@@ -65,13 +65,16 @@ function getSupabaseClient() {
 
 export default function CreatePostForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialLocality = searchParams.get('locality') || '';
+
   const { user } = useAuthStore();
   const { addOptimisticPost, removeOptimisticPost, updateOptimisticPost } = useFeedStore();
 
   const [postType, setPostType]         = useState('discussion');
   const [title, setTitle]               = useState('');
   const [content, setContent]           = useState('');
-  const [locality, setLocality]         = useState('');
+  const [locality, setLocality]         = useState(initialLocality);
   const [tags, setTags]                 = useState('');
   const [imageFile, setImageFile]       = useState(null);
   const [imagePreview, setImagePreview] = useState('');

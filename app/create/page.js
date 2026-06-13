@@ -9,11 +9,14 @@ export const metadata = generateMetadata({
   noindex: true,
 });
 
+import { Suspense } from 'react';
 
 export default function CreatePage() {
   return (
     <div className="py-4 animate-fade-in">
-      <CreatePostForm />
+      <Suspense fallback={<div className="p-8 text-center text-text-dim">Loading form...</div>}>
+        <CreatePostForm />
+      </Suspense>
     </div>
   );
 }
