@@ -8,13 +8,13 @@ export default function PublicLandingLayout({ children }) {
       {/* Navigation Bar */}
       <nav className="fixed w-full bg-white z-50 px-6 py-4 flex justify-between items-center shadow-sm">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-[#00D1A1] rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-[#4F46E5] rounded-lg flex items-center justify-center">
             <Flame className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold text-[#00D1A1] tracking-tight">Rambhahoo</span>
+          <span className="text-xl font-bold text-[#4F46E5] tracking-tight">Rambhahoo</span>
         </Link>
         <div className="flex items-center gap-6">
-          <Link href="/about" className="text-sm font-semibold text-gray-700 hover:text-[#00D1A1] hidden md:block transition-colors">About Us</Link>
+          <Link href="/about" className="text-sm font-semibold text-gray-700 hover:text-[#4F46E5] hidden md:block transition-colors">About Us</Link>
           <div className="flex gap-3">
             <Link href="/login">
               <Button variant="outline" className="px-6 rounded-full border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
@@ -22,7 +22,7 @@ export default function PublicLandingLayout({ children }) {
               </Button>
             </Link>
             <Link href="/signup">
-              <Button className="px-6 rounded-full bg-[#00D1A1] hover:bg-[#00B88D] text-white border-none shadow-sm transition-colors">
+              <Button className="px-6 rounded-full bg-[#4F46E5] hover:bg-[#4338CA] text-white border-none shadow-sm transition-colors">
                 Sign up
               </Button>
             </Link>
@@ -33,7 +33,7 @@ export default function PublicLandingLayout({ children }) {
       {/* Main Content Split */}
       <main className="flex-1 flex flex-col md:flex-row mt-[72px]">
         {/* Left Side - Gradient Area */}
-        <div className="hidden md:flex flex-1 bg-gradient-to-br from-[#00D1A1] to-[#00A07A] flex-col items-center justify-center text-white p-12 relative overflow-hidden">
+        <div className="hidden md:flex flex-1 bg-gradient-to-br from-[#1E1B4B] via-[#312E81] to-[#4F46E5] flex-col items-center justify-center text-white p-12 relative overflow-hidden">
           {/* Subtle background decoration */}
           <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
             <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white blur-3xl"></div>
