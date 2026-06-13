@@ -1,112 +1,147 @@
-import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
-import { fetchNotifications } from '@/app/actions/notifications';
-import { timeAgo } from '@/lib/utils';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import { createClient } from '@/lib/supabase/client';
+import { Bell, UserPlus, MessageSquare, Heart, BarChart3, CheckCircle2 } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
-import { MessageSquare, Heart, Bell, AlertCircle } from 'lucide-react';
-import { generateMetadata } from '@/lib/seo';
+import Link from 'next/link';
+import { timeAgo } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
+export default function NotificationsPage() {
+  const { user } = useAuthStore();
+  const router = useRouter();
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-export const metadata = generateMetadata({
-  title: 'Notifications',
-  description: 'See your latest interactions on Rambhahoo.',
-});
+  useEffect(() => {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
 
-export default async function NotificationsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+    const fetchNotifications = async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('notifications')
+        .select(`
+          *,
+          sender:sender_id (username, display_name, avatar_url),
+          post:post_id (slug, title)
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-  if (!user) {
-    redirect('/login');
-  }
+      if (!error && data) {
+        setNotifications(data);
+        
+        // Mark all as read
+        const unreadIds = data.filter(n => !n.is_read).map(n => n.id);
+        if (unreadIds.length > 0) {
+          supabase.from('notifications').update({ is_read: true }).in('id', unreadIds).then();
+        }
+      }
+      setLoading(false);
+    };
 
-  const notifications = await fetchNotifications();
+    fetchNotifications();
+  }, [user, router]);
+
+  if (!user) return null;
 
   return (
-    <div className="py-4 animate-fade-in max-w-2xl mx-auto">
-      <div className="mb-6 flex items-center gap-3">
-        <Bell size={24} className="text-blue-primary" />
-        <h1 className="text-2xl font-bold font-[family-name:var(--font-poppins)] text-text-primary">
-          Notifications
-        </h1>
+    <div className="max-w-2xl mx-auto py-6 sm:py-8 px-4 sm:px-0 animate-fade-in">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2.5 bg-blue-primary/10 rounded-xl text-blue-primary">
+          <Bell size={24} />
+        </div>
+        <h1 className="text-2xl font-bold text-text-primary">Notifications</h1>
       </div>
 
-      <div className="bg-bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-        {notifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-12 text-center">
-            <div className="w-16 h-16 bg-bg-elevated rounded-full flex items-center justify-center mb-4">
-              <Bell size={32} className="text-text-dim" />
+      <div className="bg-bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="p-8 text-center text-text-dim">Loading notifications...</div>
+        ) : notifications.length === 0 ? (
+          <div className="p-12 flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-bg-elevated rounded-full flex items-center justify-center mb-4 text-text-muted">
+              <Bell size={32} />
             </div>
-            <h3 className="text-lg font-semibold text-text-primary mb-2">You're all caught up!</h3>
-            <p className="text-text-muted text-sm">
-              When someone interacts with your posts or replies to your comments, you'll see it here.
-            </p>
+            <h3 className="text-lg font-semibold text-text-primary mb-1">You're all caught up!</h3>
+            <p className="text-text-dim">When someone interacts with you, it will show up here.</p>
           </div>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-border-light">
             {notifications.map((notif) => {
-              const { actor, post, type, content, is_read, created_at, id } = notif;
+              const isUnread = !notif.is_read;
               
               let Icon = Bell;
-              let actionText = '';
+              let iconColor = 'text-text-muted';
               let bgColor = 'bg-bg-elevated';
-              
-              if (type === 'comment') {
+              let text = '';
+              let link = '#';
+
+              if (notif.type === 'circle') {
+                Icon = UserPlus;
+                iconColor = 'text-accent-green';
+                bgColor = 'bg-accent-green/10';
+                text = 'added you to their circle.';
+                link = `/profile/${notif.sender?.username}`;
+              } else if (notif.type === 'comment') {
                 Icon = MessageSquare;
-                actionText = 'commented on your post';
-                bgColor = 'bg-blue-primary/10 text-blue-primary';
-              } else if (type === 'reaction') {
+                iconColor = 'text-blue-primary';
+                bgColor = 'bg-blue-primary/10';
+                text = 'commented on your post:';
+                link = `/post/${notif.post?.slug}`;
+              } else if (notif.type === 'reaction') {
                 Icon = Heart;
-                actionText = `reacted ${content} to your post`;
-                bgColor = 'bg-accent-red/10 text-accent-red';
+                iconColor = 'text-accent-red';
+                bgColor = 'bg-accent-red/10';
+                text = 'reacted to your post:';
+                link = `/post/${notif.post?.slug}`;
               }
 
               return (
-                <Link
-                  key={id}
-                  href={`/post/${post?.slug || ''}`}
-                  className={`flex items-start gap-4 p-4 hover:bg-bg-card-hover transition-colors ${is_read ? 'opacity-70' : 'bg-blue-primary/5'}`}
-                >
-                  <div className="relative shrink-0">
-                    <Avatar src={actor?.avatar_url} name={actor?.display_name || actor?.username} size="md" />
-                    <div className={`absolute -bottom-1 -right-1 p-1 rounded-full ${bgColor} border-2 border-bg-card`}>
-                      <Icon size={10} fill={type === 'reaction' ? 'currentColor' : 'none'} />
+                <Link key={notif.id} href={link} className={`flex items-start gap-4 p-4 sm:p-5 hover:bg-bg-elevated transition-colors ${isUnread ? 'bg-blue-primary/5' : ''}`}>
+                  <div className="relative shrink-0 mt-1">
+                    <Avatar 
+                      src={notif.sender?.avatar_url} 
+                      name={notif.sender?.display_name || 'User'} 
+                      size="md" 
+                    />
+                    <div className={`absolute -bottom-1 -right-1 p-1 rounded-full border-2 border-bg-card ${bgColor} ${iconColor}`}>
+                      <Icon size={10} strokeWidth={3} />
                     </div>
                   </div>
                   
-                  <div className="flex-1 min-w-0 pt-1">
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm text-text-primary leading-snug">
-                      <span className="font-semibold">{actor?.display_name || actor?.username}</span>{' '}
-                      <span className="text-text-muted">{actionText}</span>{' '}
-                      <span className="font-medium text-text-primary">"{post?.title}"</span>
+                      <span className="font-semibold hover:underline">
+                        {notif.sender?.display_name || notif.sender?.username || 'Someone'}
+                      </span>{' '}
+                      <span className="text-text-muted">{text}</span>
                     </p>
-                    {type === 'comment' && content && (
-                      <p className="text-sm text-text-dim mt-1 line-clamp-2">"{content}"</p>
+                    
+                    {notif.post && (
+                      <p className="text-sm font-medium text-text-primary mt-0.5 truncate">
+                        "{notif.post.title}"
+                      </p>
                     )}
-                    <p className="text-xs text-text-dim mt-1.5">{timeAgo(created_at)}</p>
+                    
+                    <p className="text-xs text-text-dim mt-1.5 font-medium">
+                      {timeAgo(notif.created_at)}
+                    </p>
                   </div>
                   
-                  {!is_read && (
-                    <div className="w-2 h-2 rounded-full bg-blue-primary shrink-0 mt-2" />
+                  {isUnread && (
+                    <div className="shrink-0 w-2.5 h-2.5 rounded-full bg-blue-primary mt-2" />
                   )}
                 </Link>
               );
             })}
           </div>
         )}
-      </div>
-      
-      {/* Alert about SQL script for user */}
-      <div className="mt-8 p-4 bg-accent-amber/10 border border-accent-amber/30 rounded-xl flex items-start gap-3">
-        <AlertCircle size={20} className="text-accent-amber shrink-0 mt-0.5" />
-        <div>
-          <h4 className="font-semibold text-accent-amber text-sm">Developer Note</h4>
-          <p className="text-xs text-text-muted mt-1">
-            If notifications aren't appearing, ensure you have executed the `notifications.sql` script in your Supabase dashboard to create the table and triggers.
-          </p>
-        </div>
       </div>
     </div>
   );
