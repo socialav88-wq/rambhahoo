@@ -68,10 +68,10 @@ export default function ImageCard({ post }) {
         </div>
 
         {/* Title */}
-        <Link href={`/post/${slug}`}>
-          <h3 className="text-sm font-semibold text-text-primary hover:text-blue-primary transition-colors leading-snug">
+        <Link href={`/post/${slug}`} className="block group mb-3">
+          <h2 className="text-base font-semibold text-text-primary group-hover:text-blue-primary transition-colors leading-snug mb-1 break-words">
             {title}
-          </h3>
+          </h2>
         </Link>
 
         {/* Tags */}
@@ -95,11 +95,12 @@ export default function ImageCard({ post }) {
             </Link>
             <button 
               onClick={(e) => { e.preventDefault(); toggleSave(id); }}
+              aria-label="Save post"
               className={`transition-colors ${isSaved(id) ? 'text-accent-amber' : 'text-text-dim hover:text-accent-amber'}`}
             >
               <Bookmark size={14} fill={isSaved(id) ? 'currentColor' : 'none'} />
             </button>
-            <button className="text-text-dim hover:text-accent-green transition-colors"><Share2 size={14} /></button>
+            <button aria-label="Share post" className="text-text-dim hover:text-accent-green transition-colors"><Share2 size={14} /></button>
           </div>
         </div>
       </div>

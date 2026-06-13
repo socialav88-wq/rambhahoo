@@ -51,9 +51,9 @@ export default function DiscussionCard({ post }) {
 
       {/* Content */}
       <Link href={`/post/${slug}`} className="block group">
-        <h3 className="text-base font-semibold text-text-primary group-hover:text-blue-primary transition-colors leading-snug mb-1 break-words">
+        <h2 className="text-base font-semibold text-text-primary group-hover:text-blue-primary transition-colors leading-snug mb-1 break-words">
           {title}
-        </h3>
+        </h2>
         {content && (
           <p className="text-sm text-text-muted line-clamp-3 leading-relaxed break-words">
             {content}
@@ -84,11 +84,12 @@ export default function DiscussionCard({ post }) {
           </Link>
           <button 
             onClick={(e) => { e.preventDefault(); toggleSave(id); }}
+            aria-label="Save post"
             className={`transition-colors ${isSaved(id) ? 'text-accent-amber' : 'text-text-dim hover:text-accent-amber'}`}
           >
             <Bookmark size={14} fill={isSaved(id) ? 'currentColor' : 'none'} />
           </button>
-          <button className="text-text-dim hover:text-accent-green transition-colors">
+          <button aria-label="Share post" className="text-text-dim hover:text-accent-green transition-colors">
             <Share2 size={14} />
           </button>
         </div>

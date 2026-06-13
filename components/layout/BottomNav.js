@@ -40,6 +40,7 @@ export default function BottomNav() {
                 <Link
                   key={item.label}
                   href={href}
+                  aria-label={item.label}
                   className="flex items-center justify-center"
                 >
                   <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-primary to-purple-secondary flex items-center justify-center shadow-lg shadow-blue-primary/30 active:scale-90 transition-transform">

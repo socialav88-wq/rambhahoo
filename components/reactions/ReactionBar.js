@@ -27,6 +27,7 @@ export default function ReactionBar({ reactions = {}, onReact, userReactions = [
           <button
             key={emoji}
             onClick={() => handleReact(emoji)}
+            aria-label={`React with ${emoji}`}
             className={cn(
               'flex items-center gap-1 rounded-full transition-all duration-200',
               size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm',
@@ -55,6 +56,7 @@ export default function ReactionBar({ reactions = {}, onReact, userReactions = [
         <div className="relative">
           <button
             onClick={() => setShowPicker(!showPicker)}
+            aria-label="Add reaction"
             className={cn(
               'rounded-full border border-dashed border-border-light hover:border-blue-primary text-text-dim hover:text-blue-primary transition-all',
               size === 'sm' ? 'w-7 h-7 text-sm' : 'w-8 h-8 text-base'

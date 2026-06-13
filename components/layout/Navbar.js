@@ -25,7 +25,7 @@ export default function Navbar() {
       <div className="mx-auto max-w-7xl px-4">
         <div className="flex h-14 items-center justify-between gap-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0">
+          <Link href="/" aria-label="Home" className="flex items-center gap-2 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-primary to-purple-secondary flex items-center justify-center">
               <Flame size={18} className="text-white" />
             </div>
@@ -53,6 +53,7 @@ export default function Navbar() {
             {/* Mobile search toggle */}
             <button
               onClick={() => setSearchOpen(!searchOpen)}
+              aria-label="Toggle Search"
               className="md:hidden p-2 rounded-lg hover:bg-bg-card-hover text-text-muted hover:text-text-primary transition-colors"
             >
               {searchOpen ? <X size={20} /> : <Search size={20} />}
