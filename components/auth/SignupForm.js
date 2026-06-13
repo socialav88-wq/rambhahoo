@@ -132,15 +132,15 @@ function SignupFormInner() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-[#00D1A1] hover:bg-[#00B88D] text-white rounded-full py-3.5 text-base font-bold transition-colors shadow-sm disabled:opacity-70"
+          className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white rounded-full py-3.5 text-base font-bold transition-colors shadow-sm disabled:opacity-70"
         >
           {isLoading ? 'Creating account...' : 'Continue'}
         </button>
       </form>
 
-      <div className="mt-8 text-center text-sm text-[#678BA8]">
+      <div className="mt-8 text-center text-sm text-gray-500">
         Already have an account?{' '}
-        <Link href="/login" className="text-[#00D1A1] hover:underline font-medium">
+        <Link href="/login" className="text-[#4F46E5] hover:underline font-medium">
           Log in
         </Link>
       </div>
