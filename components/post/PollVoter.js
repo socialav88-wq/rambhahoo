@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { CheckCircle2, Loader2, BarChart3 } from 'lucide-react';
 import { votePoll } from '@/app/actions/interactions';
 import { useAuthStore } from '@/store/authStore';
 import { formatNumber } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 export default function PollVoter({ postId, options = [], initialVotedOptionId = null, compact = false }) {
   const { user } = useAuthStore();
@@ -23,6 +24,33 @@ export default function PollVoter({ postId, options = [], initialVotedOptionId =
   const [total, setTotal] = useState(initialTotal);
   const [voted, setVoted] = useState(initialVotedOptionId); // optionId user voted for
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`poll_options_updates_${postId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'poll_options' },
+        (payload) => {
+          const updatedOption = payload.new;
+          // Only update if this option belongs to our list of options
+          if (options.some(o => o.id === updatedOption.id)) {
+            setVotes(prev => {
+              const newVotes = { ...prev, [updatedOption.id]: updatedOption.vote_count };
+              const newTotal = Object.values(newVotes).reduce((sum, val) => sum + val, 0);
+              setTotal(newTotal);
+              return newVotes;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [options, postId]);
 
   const handleVote = (optionId) => {
     if (!user) {
