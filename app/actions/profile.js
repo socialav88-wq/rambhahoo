@@ -81,6 +81,42 @@ export async function joinLocality(localitySlug) {
   }
 }
 
+// ===== TOGGLE FOLLOW =====
+export async function toggleFollow(followingId) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Not authenticated' };
+
+  if (user.id === followingId) return { error: 'Cannot follow yourself' };
+
+  try {
+    const { data: existing } = await supabase
+      .from('followers')
+      .select('following_id')
+      .eq('follower_id', user.id)
+      .eq('following_id', followingId)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('followers').delete().eq('follower_id', user.id).eq('following_id', followingId);
+      return { success: true, action: 'unfollowed' };
+    } else {
+      await supabase.from('followers').insert({ follower_id: user.id, following_id: followingId });
+      
+      // Notify the user they were followed
+      await supabase.from('notifications').insert({
+        user_id: followingId,
+        actor_id: user.id,
+        type: 'follow',
+      });
+      
+      return { success: true, action: 'followed' };
+    }
+  } catch (err) {
+    return { error: 'Failed to toggle follow' };
+  }
+}
+
 export async function fetchUserProfile(username) {
   const supabase = await createClient();
   const { data, error } = await supabase

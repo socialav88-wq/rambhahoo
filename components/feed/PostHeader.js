@@ -6,10 +6,12 @@ import Badge from '@/components/ui/Badge';
 import { timeAgo } from '@/lib/utils';
 import PostMenu from './PostMenu';
 import { useAuthStore } from '@/store/authStore';
-import toast from 'react-hot-toast';
+import { useFollowing } from '@/hooks/useFollowing';
 
 export default function PostHeader({ post }) {
   const { user } = useAuthStore();
+  const { toggleFollow, isFollowingUser } = useFollowing();
+  
   const {
     created_at, is_trending,
     profiles: author,
@@ -17,14 +19,11 @@ export default function PostHeader({ post }) {
   } = post;
 
   const isAuthor = user?.id === author?.id;
+  const isFollowing = isFollowingUser(author?.id);
 
-  const handleAddToCircle = (e) => {
+  const handleToggleCircle = (e) => {
     e.preventDefault();
-    if (!user) {
-      toast.error('Please login to add to your circle');
-      return;
-    }
-    toast.success(`Added ${author?.display_name || author?.username} to your Circle!`);
+    toggleFollow(author?.id, author?.display_name || author?.username);
   };
 
   return (
@@ -41,10 +40,10 @@ export default function PostHeader({ post }) {
             
             {!isAuthor && (
               <button 
-                onClick={handleAddToCircle}
-                className="text-xs font-semibold text-blue-primary hover:text-blue-hover transition-colors flex items-center gap-1"
+                onClick={handleToggleCircle}
+                className={`text-xs font-semibold transition-colors flex items-center gap-1 ${isFollowing ? 'text-text-dim hover:text-accent-red' : 'text-blue-primary hover:text-blue-hover'}`}
               >
-                <span>•</span> Add to Circle
+                <span>•</span> {isFollowing ? 'Following' : 'Add to Circle'}
               </button>
             )}
 

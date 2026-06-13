@@ -129,3 +129,52 @@ export async function deleteComment(commentId, postId) {
     return { error: 'Failed to delete comment' };
   }
 }
+
+// ===== SAVE POST =====
+export async function toggleSavePost(postId) {
+  if (!isSupabaseConfigured()) return { error: 'Backend not configured yet.' };
+  
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Not authenticated' };
+
+  try {
+    const { data: existing } = await supabase
+      .from('saved_posts')
+      .select('post_id')
+      .eq('user_id', user.id)
+      .eq('post_id', postId)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('saved_posts').delete().eq('user_id', user.id).eq('post_id', postId);
+      return { success: true, action: 'unsaved' };
+    } else {
+      await supabase.from('saved_posts').insert({ user_id: user.id, post_id: postId });
+      return { success: true, action: 'saved' };
+    }
+  } catch (err) {
+    return { error: 'Failed to save post' };
+  }
+}
+
+// ===== REPORT POST =====
+export async function reportPost(postId, reason = 'Inappropriate content') {
+  if (!isSupabaseConfigured()) return { error: 'Backend not configured yet.' };
+  
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  // We allow anonymous reports or just require auth? Let's require auth.
+  if (!user) return { error: 'Not authenticated' };
+
+  try {
+    const { error } = await supabase
+      .from('reports')
+      .insert({ reporter_id: user.id, post_id: postId, reason });
+      
+    if (error) return { error: error.message };
+    return { success: true };
+  } catch (err) {
+    return { error: 'Failed to report post' };
+  }
+}

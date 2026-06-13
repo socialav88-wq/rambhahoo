@@ -1,31 +1,58 @@
 import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { toggleSavePost } from '@/app/actions/interactions';
+import { useAuthStore } from '@/store/authStore';
+import toast from 'react-hot-toast';
 
 export function useSavedPosts() {
   const [savedPosts, setSavedPosts] = useState({});
+  const { user } = useAuthStore();
 
+  // Load from backend on mount
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('rambhahoo_saved_posts');
-      if (saved) {
-        setSavedPosts(JSON.parse(saved));
+    async function fetchSavedPosts() {
+      if (!user) return;
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('saved_posts')
+        .select('post_id')
+        .eq('user_id', user.id);
+        
+      if (!error && data) {
+        const savedMap = {};
+        data.forEach(row => { savedMap[row.post_id] = true; });
+        setSavedPosts(savedMap);
       }
-    } catch (e) {
-      console.error('Failed to load saved posts', e);
     }
-  }, []);
+    fetchSavedPosts();
+  }, [user]);
 
-  const toggleSave = (postId) => {
-    const newSaved = { ...savedPosts };
-    if (newSaved[postId]) {
-      delete newSaved[postId];
-    } else {
-      newSaved[postId] = true;
+  const toggleSave = async (postId) => {
+    if (!user) {
+      toast.error('Please login to save posts');
+      return;
     }
-    setSavedPosts(newSaved);
-    try {
-      localStorage.setItem('rambhahoo_saved_posts', JSON.stringify(newSaved));
-    } catch (e) {
-      console.error('Failed to save post', e);
+
+    // Optimistic UI Update
+    const isCurrentlySaved = !!savedPosts[postId];
+    setSavedPosts(prev => ({
+      ...prev,
+      [postId]: !isCurrentlySaved
+    }));
+
+    // Server Action
+    const res = await toggleSavePost(postId);
+    if (res?.error) {
+      // Revert on error
+      setSavedPosts(prev => ({
+        ...prev,
+        [postId]: isCurrentlySaved
+      }));
+      toast.error(res.error);
+    } else {
+      if (res.action === 'saved') {
+        toast.success('Post saved');
+      }
     }
   };
 

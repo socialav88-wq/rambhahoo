@@ -34,9 +34,19 @@ export default function PostMenu({ post }) {
     setIsOpen(false);
   };
 
-  const handleReport = (e) => {
+  const handleReport = async (e) => {
     e.preventDefault();
-    toast.success('Post reported to moderators');
+    if (!user) {
+      toast.error('Please login to report posts');
+      return;
+    }
+    // We could prompt for a reason here, but for now we send a default
+    const res = await import('@/app/actions/interactions').then(m => m.reportPost(post.id));
+    if (res?.error) {
+      toast.error('Failed to report post');
+    } else {
+      toast.success('Post reported to moderators');
+    }
     setIsOpen(false);
   };
 
