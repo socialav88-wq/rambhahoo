@@ -5,7 +5,6 @@ import { generateMetadata } from '@/lib/seo';
 export const metadata = generateMetadata({
   title: 'Sign Up',
   description: 'Create an account to join your local neighborhood discussions.',
-  noindex: true,
 });
 
 export default function SignupPage() {

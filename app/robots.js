@@ -7,8 +7,6 @@ export default function robots() {
       allow: '/',
       disallow: [
         '/api/',
-        '/login',
-        '/signup',
         '/create',
         '/create-locality',
         '/settings',
