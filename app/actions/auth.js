@@ -47,6 +47,20 @@ export async function loginWithGoogle() {
   return { url: data.url };
 }
 
+export async function loginWithGoogleToken(idToken) {
+  if (!isSupabaseConfigured()) return { error: 'Backend not configured yet.' };
+  
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider: 'google',
+    token: idToken,
+  });
+  
+  if (error) return { error: error.message };
+  revalidatePath('/');
+  return { success: true };
+}
+
 export async function logout() {
   if (!isSupabaseConfigured()) return;
   const supabase = await createClient();
