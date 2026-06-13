@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Compass, PlusCircle, TrendingUp, User } from 'lucide-react';
+import { Home, Compass, PlusCircle, Bell, User } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import Avatar from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { label: 'Home', href: '/', icon: Home },
   { label: 'Explore', href: '/search', icon: Compass },
   { label: 'Create', href: '/create', icon: PlusCircle, isSpecial: true },
-  { label: 'Trending', href: '/trending', icon: TrendingUp },
+  { label: 'Alerts', href: '/notifications', icon: Bell },
   { label: 'Profile', href: '/profile', icon: User },
 ];
 

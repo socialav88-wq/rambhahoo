@@ -41,7 +41,8 @@ export async function fetchFeeds(filter = 'new', localitySlug = null, lat = null
       .select(`
         *,
         profiles:user_id (username, display_name, avatar_url),
-        localities:locality_id (slug, name, emoji)
+        localities:locality_id (slug, name, emoji),
+        poll_options (id, option_text, vote_count, sort_order)
       `);
 
     if (localitySlug && localitySlug !== 'hyderabad') {

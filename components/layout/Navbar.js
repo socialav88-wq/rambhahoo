@@ -71,6 +71,12 @@ export default function Navbar() {
             {user ? (
               <>
                 <Link
+                  href="/notifications"
+                  className="p-2 rounded-lg hover:bg-bg-card-hover text-text-muted hover:text-text-primary transition-colors relative"
+                >
+                  <Bell size={20} />
+                </Link>
+                <Link
                   href={`/profile/${profile?.username || ''}`}
                   className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-bg-card-hover transition-colors"
                 >

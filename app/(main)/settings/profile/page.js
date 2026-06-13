@@ -74,13 +74,29 @@ export default function EditProfilePage() {
         setError(result.error);
       } else {
         setSuccess('Profile updated successfully!');
-        // Refresh session to get new profile data
-        const res = await fetch('/api/auth/session');
-        const sessionData = await res.json();
-        if (sessionData.user) {
-          useAuthStore.getState().setUser(sessionData.user);
-        }
-        setTimeout(() => router.push('/profile'), 1000);
+        
+        // Optimistically update the store
+        useAuthStore.getState().setProfile({
+          ...user.profile,
+          display_name: formData.displayName,
+          username: formData.username,
+          bio: formData.bio,
+          avatar_url: avatarPreview || user.profile?.avatar_url
+        });
+
+        // Background sync with fresh data
+        import('@/lib/supabase/client').then(async ({ createClient }) => {
+          const supabase = createClient();
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            const { data: freshProfile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+            if (freshProfile) {
+              useAuthStore.getState().setUser({ ...session.user, profile: freshProfile });
+            }
+          }
+        });
+
+        setTimeout(() => router.push(`/profile/${formData.username}`), 1000);
       }
     });
   };
