@@ -44,12 +44,12 @@ export default function LocalityHeader({ locality }) {
             <div className="flex items-center gap-3 mb-2">
               <span className="text-4xl">{locality.emoji}</span>
               <h1 className="text-2xl sm:text-3xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
-                {locality.name}
+                {locality.name} Community & Neighborhood Updates
               </h1>
             </div>
-            <p className="text-blue-primary font-medium text-sm mb-2">
-              {locality.tagline}
-            </p>
+            <h2 className="text-blue-primary font-medium text-sm mb-2">
+              Recent {locality.name} Events & Local Discussions - {locality.tagline}
+            </h2>
             <p className="text-text-muted text-sm max-w-xl leading-relaxed">
               {locality.description}
             </p>

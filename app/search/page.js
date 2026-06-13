@@ -6,8 +6,8 @@ import { searchPosts } from '@/app/actions/posts';
 export const dynamic = 'force-dynamic';
 
 export const metadata = generateMetadata({
-  title: 'Search Communities, Users and Posts',
-  description: 'Search for discussions, people, and topics in your neighborhood.',
+  exactTitle: 'Search Communities & Local Discussions | Rambhahoo',
+  description: 'Search communities, discover local communities, and search local discussions happening right now on Rambhahoo.',
 });
 
 export default async function SearchPage({ searchParams }) {
@@ -20,11 +20,14 @@ export default async function SearchPage({ searchParams }) {
   }
 
   return (
-    <div className="py-4 animate-fade-in">
+    <div className="py-2 animate-fade-in">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold font-[family-name:var(--font-poppins)] text-text-primary mb-4 hidden md:block">
-          Explore
+        <h1 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-poppins)] text-text-primary tracking-tight mb-2">
+          Search Local Communities & Discussions
         </h1>
+        <h2 className="text-text-muted text-sm md:text-base mb-6 leading-snug">
+          Discover local communities, search local discussions, and find people near you.
+        </h2>
         <SearchBar initialQuery={query} />
       </div>
 

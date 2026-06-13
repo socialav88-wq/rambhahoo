@@ -14,6 +14,7 @@ export default function SettingsPage() {
   const { user, profile } = useAuthStore();
   
   const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState('');
@@ -28,6 +29,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (profile) {
       setDisplayName(profile.display_name || '');
+      setUsername(profile.username || '');
       setBio(profile.bio || '');
       setAvatarPreview(profile.avatar_url || '');
     }
@@ -80,6 +82,7 @@ export default function SettingsPage() {
 
     const formData = new FormData();
     formData.append('displayName', displayName);
+    formData.append('username', username);
     formData.append('bio', bio);
     if (finalAvatarUrl) {
       formData.append('avatarUrl', finalAvatarUrl);
@@ -160,14 +163,20 @@ export default function SettingsPage() {
 
             <div>
               <label className="block text-sm font-medium text-text-primary mb-1.5">
-                Username (Read-only)
+                Username
               </label>
               <input
                 type="text"
-                value={profile.username}
-                disabled
-                className="w-full bg-bg-elevated border border-border rounded-xl px-4 py-2.5 text-text-muted opacity-70 cursor-not-allowed"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                maxLength={20}
+                minLength={3}
+                required
+                className="w-full bg-bg-elevated border border-border rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-dim focus:outline-none focus:border-blue-primary focus:ring-1 focus:ring-blue-primary/50 transition-all"
               />
+              <p className="text-xs text-text-dim mt-1.5">
+                Only lowercase letters, numbers, and underscores allowed (3-20 characters).
+              </p>
             </div>
 
             <div>

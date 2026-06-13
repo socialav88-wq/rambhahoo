@@ -28,7 +28,7 @@ export default function ImageCard({ post, priority = false }) {
           <div className="relative w-full h-[400px] sm:h-[500px] md:h-[600px] bg-bg-elevated/50 backdrop-blur-sm overflow-hidden flex items-center justify-center border-b border-border/50">
             <Image
               src={image_url}
-              alt={title}
+              alt={locality ? `${title} - local update from ${locality.name} community` : `${title} - neighborhood discussion`}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="object-contain"

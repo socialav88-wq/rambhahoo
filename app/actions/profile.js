@@ -30,12 +30,11 @@ export async function updateProfile(formData) {
 
   const { error } = await supabase
     .from('profiles')
-    .update(updates)
-    .eq('id', user.id);
+    .upsert({ id: user.id, ...updates }, { onConflict: 'id' });
 
   if (error) {
     console.error('Profile update error:', error);
-    if (error.code === '23505') return { error: 'Username is already taken' };
+    if (error.code === '23505') return { error: 'Username is already taken. Please choose another one.' };
     return { error: error.message };
   }
 
