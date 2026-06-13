@@ -22,10 +22,10 @@ export default async function SearchPage({ searchParams }) {
   return (
     <div className="py-2 animate-fade-in">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-poppins)] text-text-primary tracking-tight mb-2">
+        <h1 className="sr-only">
           Search Local Communities & Discussions
         </h1>
-        <h2 className="text-text-muted text-sm md:text-base mb-6 leading-snug">
+        <h2 className="sr-only">
           Discover local communities, search local discussions, and find people near you.
         </h2>
         <SearchBar initialQuery={query} />

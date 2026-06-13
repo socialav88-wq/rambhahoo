@@ -50,7 +50,7 @@ export async function toggleRsvp(postId, status = 'going') {
         user_id: post.user_id,
         actor_id: user.id,
         type: 'rsvp',
-        post_id: postId
+        reference_id: postId
       });
     }
   }
