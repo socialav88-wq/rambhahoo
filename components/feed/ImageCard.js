@@ -9,7 +9,7 @@ import ReactionBar from '@/components/reactions/ReactionBar';
 import { timeAgo, formatNumber } from '@/lib/utils';
 import { useSavedPosts } from '@/hooks/useSavedPosts';
 
-export default function ImageCard({ post }) {
+export default function ImageCard({ post, priority = false }) {
   const { isSaved, toggleSave } = useSavedPosts();
   const {
     id, title, image_url, slug, tags = [],
@@ -32,7 +32,7 @@ export default function ImageCard({ post }) {
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="object-contain"
-              priority={false}
+              priority={priority}
             />
           </div>
         ) : (

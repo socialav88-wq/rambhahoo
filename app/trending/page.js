@@ -2,7 +2,7 @@ import TrendingTopics from '@/components/trending/TrendingTopics';
 import { generateMetadata } from '@/lib/seo';
 
 export const metadata = generateMetadata({
-  title: 'Trending',
+  title: 'Trending Discussions Near You',
   description: 'See what everyone in Hyderabad is talking about right now.',
 });
 

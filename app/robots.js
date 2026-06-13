@@ -5,7 +5,17 @@ export default function robots() {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/api/'],
+      disallow: [
+        '/api/',
+        '/login',
+        '/signup',
+        '/create',
+        '/create-locality',
+        '/settings',
+        '/admin',
+        '/private',
+        '/drafts'
+      ],
     },
     sitemap: `${APP_URL}/sitemap.xml`,
   };

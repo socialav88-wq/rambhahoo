@@ -3,7 +3,6 @@ import { generateMetadata } from '@/lib/seo';
 import { fetchFeeds } from '@/app/actions/posts';
 
 export const metadata = generateMetadata({
-  title: 'Rambhahoo | Hyderabad\'s Local Network',
   description: 'Join the conversation in Hyderabad. Local news, discussions, memes, and more.',
 });
 

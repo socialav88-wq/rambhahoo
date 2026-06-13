@@ -1,4 +1,4 @@
-import { APP_URL } from '@/lib/constants';
+import { APP_URL, LOCALITIES } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function sitemap() {
@@ -10,7 +10,7 @@ export default async function sitemap() {
       url: APP_URL,
       lastModified: new Date(),
       changeFrequency: 'always',
-      priority: 1,
+      priority: 1.0,
     },
     {
       url: `${APP_URL}/search`,
@@ -26,10 +26,21 @@ export default async function sitemap() {
     },
   ];
 
-  // Fetch all posts
+  // Map localities natively
+  LOCALITIES.forEach((loc) => {
+    routes.push({
+      url: `${APP_URL}/${loc.slug}`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.9,
+    });
+  });
+
+  // Fetch all posts efficiently
   const { data: posts } = await supabase
     .from('posts')
-    .select('slug, created_at');
+    .select('slug, created_at')
+    .limit(50000);
 
   if (posts) {
     posts.forEach((post) => {
@@ -42,16 +53,17 @@ export default async function sitemap() {
     });
   }
 
-  // Fetch all profiles
+  // Fetch all user profiles efficiently
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('username, created_at');
+    .select('username, updated_at, created_at')
+    .limit(50000);
 
   if (profiles) {
     profiles.forEach((profile) => {
       routes.push({
         url: `${APP_URL}/profile/${profile.username}`,
-        lastModified: new Date(profile.created_at),
+        lastModified: new Date(profile.updated_at || profile.created_at || Date.now()),
         changeFrequency: 'weekly',
         priority: 0.5,
       });

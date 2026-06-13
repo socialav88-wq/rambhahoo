@@ -26,6 +26,9 @@ export default function RootLayout({ children }) {
         <meta name="theme-color" content="#F8FAFC" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
+        {process.env.NEXT_PUBLIC_SUPABASE_URL && (
+          <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
+        )}
       </head>
       <body className={`${inter.variable} ${poppins.variable} antialiased min-h-screen flex flex-col`}>
         <Toaster 
@@ -43,6 +46,23 @@ export default function RootLayout({ children }) {
         />
         <AuthProvider>
           <RealtimeProvider>
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                  '@context': 'https://schema.org',
+                  '@type': 'WebSite',
+                  name: 'Rambhahoo',
+                  description: 'Hyderabad\'s hyperlocal social network',
+                  url: 'https://www.rambhahoo.com',
+                  potentialAction: {
+                    '@type': 'SearchAction',
+                    target: 'https://www.rambhahoo.com/search?q={search_term_string}',
+                    'query-input': 'required name=search_term_string',
+                  },
+                })
+              }}
+            />
             <MainLayout>
               {children}
             </MainLayout>

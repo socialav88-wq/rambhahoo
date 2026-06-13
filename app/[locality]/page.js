@@ -22,6 +22,18 @@ export default async function LocalityPage({ params }) {
 
   return (
     <div className="animate-fade-in">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Place',
+            name: `${locality.name}, Hyderabad`,
+            description: locality.description,
+            url: `https://www.rambhahoo.com/${locality.slug}`
+          })
+        }}
+      />
       <LocalityHeader locality={locality} />
       <div className="mt-6">
         <FeedContainer localitySlug={slug} />

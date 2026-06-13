@@ -4,6 +4,7 @@ import { generateMetadata } from '@/lib/seo';
 export const metadata = generateMetadata({
   title: 'Log In',
   description: 'Log in to Rambhahoo to connect with your neighborhood.',
+  noindex: true,
 });
 
 export default function LoginPage() {

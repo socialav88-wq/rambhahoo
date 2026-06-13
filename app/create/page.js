@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = generateMetadata({
   title: 'Create Post',
   description: 'Start a discussion, share a meme, or ask your neighborhood.',
+  noindex: true,
 });
 
 

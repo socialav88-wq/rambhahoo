@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 
-export default function PostCard({ post }) {
+export default function PostCard({ post, priority = false }) {
   const { user } = useAuthStore();
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -20,7 +20,7 @@ export default function PostCard({ post }) {
   let content;
   switch (post.post_type) {
     case 'image':
-      content = <ImageCard post={post} />;
+      content = <ImageCard post={post} priority={priority} />;
       break;
     case 'poll':
       content = <PollCard post={post} />;

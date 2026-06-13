@@ -21,6 +21,27 @@ export default async function PostPage({ params }) {
 
   return (
     <div className="animate-fade-in">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'DiscussionForumPosting',
+            headline: post.title,
+            articleBody: post.content || post.title,
+            datePublished: post.created_at,
+            author: {
+              '@type': 'Person',
+              name: post.profiles?.display_name || post.profiles?.username || 'Anonymous',
+            },
+            interactionStatistic: {
+              '@type': 'InteractionCounter',
+              interactionType: 'https://schema.org/CommentAction',
+              userInteractionCount: post.comment_count || 0,
+            }
+          })
+        }}
+      />
       <PostDetail post={post} />
     </div>
   );

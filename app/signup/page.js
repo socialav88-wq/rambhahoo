@@ -3,7 +3,8 @@ import { generateMetadata } from '@/lib/seo';
 
 export const metadata = generateMetadata({
   title: 'Sign Up',
-  description: 'Join Rambhahoo and connect with your local community.',
+  description: 'Create an account to join your local neighborhood discussions.',
+  noindex: true,
 });
 
 export default function SignupPage() {

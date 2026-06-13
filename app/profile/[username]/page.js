@@ -38,6 +38,19 @@ export default async function ProfilePage({ params }) {
 
   return (
     <div className="animate-fade-in py-4">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Person',
+            name: profile.display_name || profile.username,
+            alternateName: profile.username,
+            description: profile.bio || '',
+            url: `https://www.rambhahoo.com/profile/${profile.username}`
+          })
+        }}
+      />
       <ProfileHeader profile={profile} isOwnProfile={isOwnProfile} />
       <div className="mt-8">
         <div className="border-b border-border flex gap-6 mb-6 px-4 sm:px-0">
