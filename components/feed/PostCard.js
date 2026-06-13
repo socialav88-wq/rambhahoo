@@ -3,6 +3,7 @@
 import DiscussionCard from './DiscussionCard';
 import ImageCard from './ImageCard';
 import PollCard from './PollCard';
+import EventCard from './EventCard';
 import { Loader2, AlertCircle, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { deletePost } from '@/app/actions/posts';
@@ -20,6 +21,9 @@ export default function PostCard({ post, priority = false }) {
       break;
     case 'poll':
       content = <PollCard post={post} />;
+      break;
+    case 'event':
+      content = <EventCard post={post} />;
       break;
     case 'discussion':
     default:

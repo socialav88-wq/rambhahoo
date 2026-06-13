@@ -1,4 +1,5 @@
 import TrendingTopics from '@/components/trending/TrendingTopics';
+import Leaderboard from '@/components/trending/Leaderboard';
 import Breadcrumbs from '@/components/ui/Breadcrumbs';
 import { generateMetadata } from '@/lib/seo';
 
@@ -19,7 +20,15 @@ export default function TrendingPage() {
           Explore the hottest community discussions and local updates in your area.
         </h2>
       </div>
-      <TrendingTopics />
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <TrendingTopics />
+        </div>
+        <div className="lg:col-span-1">
+          <Leaderboard />
+        </div>
+      </div>
     </div>
   );
 }

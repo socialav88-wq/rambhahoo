@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Image as ImageIcon, BarChart3, MapPin, X, MessageSquare, CheckCircle2 } from 'lucide-react';
+import { Image as ImageIcon, BarChart3, MapPin, X, MessageSquare, CheckCircle2, Calendar } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { POST_TYPES, LOCALITIES } from '@/lib/constants';
 import { useAuthStore } from '@/store/authStore';
@@ -79,6 +79,8 @@ export default function CreatePostForm() {
   const [imageFile, setImageFile]       = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [pollOptions, setPollOptions]   = useState(['', '']);
+  const [eventDate, setEventDate]       = useState('');
+  const [locationName, setLocationName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [error, setError]               = useState('');
@@ -128,6 +130,12 @@ export default function CreatePostForm() {
       console.groupEnd();
       return;
     }
+    if (postType === 'event' && !eventDate) {
+      tValidate.fail('event date is empty');
+      setError('Please select a date and time for the event.');
+      console.groupEnd();
+      return;
+    }
     if (!user) {
       tValidate.fail('user not authenticated');
       console.error('[CREATE-POST] ✘ No user in auth store — redirecting to login');
@@ -151,6 +159,10 @@ export default function CreatePostForm() {
       formData.append('post_type', postType);
       if (locality) formData.append('locality', locality);
       if (tags)     formData.append('tags', tags);
+      if (postType === 'event') {
+        formData.append('event_date', new Date(eventDate).toISOString());
+        if (locationName) formData.append('location_name', locationName.trim());
+      }
       if (gpsLocation) {
         formData.append('location_lat', gpsLocation.lat);
         formData.append('location_lng', gpsLocation.lng);
@@ -301,6 +313,7 @@ export default function CreatePostForm() {
               {t.value === 'discussion' && <MessageSquare size={24} />}
               {t.value === 'image'      && <ImageIcon size={24} />}
               {t.value === 'poll'       && <BarChart3 size={24} />}
+              {t.value === 'event'      && <Calendar size={24} />}
               <span className="text-sm font-medium">{t.label}</span>
             </button>
           ))}
@@ -393,6 +406,36 @@ export default function CreatePostForm() {
                   + Add Option
                 </Button>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Event Options */}
+        {postType === 'event' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-1.5">
+                Event Date & Time <span className="text-accent-red">*</span>
+              </label>
+              <input
+                type="datetime-local"
+                value={eventDate}
+                onChange={(e) => setEventDate(e.target.value)}
+                required
+                className="w-full bg-bg-elevated border border-border rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:border-blue-primary transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-1.5">
+                Venue Name (Optional)
+              </label>
+              <input
+                type="text"
+                value={locationName}
+                onChange={(e) => setLocationName(e.target.value)}
+                placeholder="e.g. KBR Park Entrance"
+                className="w-full bg-bg-elevated border border-border rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-dim focus:outline-none focus:border-blue-primary transition-all"
+              />
             </div>
           </div>
         )}

@@ -42,7 +42,8 @@ export async function fetchFeeds(filter = 'new', localitySlug = null, lat = null
         *,
         profiles:user_id (username, display_name, avatar_url),
         localities:locality_id (slug, name, emoji),
-        poll_options (id, option_text, vote_count, sort_order)
+        poll_options (id, option_text, vote_count, sort_order),
+        events (event_date, location_name, rsvp_count)
       `);
 
     if (localitySlug && localitySlug !== 'hyderabad') {
@@ -113,7 +114,8 @@ export async function fetchPostBySlug(slug) {
       *,
       profiles:user_id (username, display_name, avatar_url),
       localities:locality_id (slug, name, emoji),
-      poll_options (id, option_text, vote_count, sort_order)
+      poll_options (id, option_text, vote_count, sort_order),
+      events (event_date, location_name, rsvp_count)
     `)
     .eq('slug', slug)
     .single();
@@ -204,6 +206,8 @@ export async function createPost(formData) {
   const poll_options_raw = formData.get('poll_options');
   const location_lat = formData.get('location_lat');
   const location_lng = formData.get('location_lng');
+  const event_date   = formData.get('event_date');
+  const location_name = formData.get('location_name');
 
   console.log('[SERVER:posts] FormData received:', {
     title,
@@ -212,6 +216,7 @@ export async function createPost(formData) {
     tags: tagsStr || 'none',
     has_image_url: !!image_url,
     has_poll_options: !!poll_options_raw,
+    has_event_date: !!event_date,
     content_length: content.length,
   });
 
@@ -220,10 +225,10 @@ export async function createPost(formData) {
     return { error: 'Title is required.' };
   }
 
-  const validTypes = ['discussion', 'image', 'poll'];
+  const validTypes = ['discussion', 'image', 'poll', 'event'];
   if (!validTypes.includes(post_type)) {
     tParse.fail(`invalid post_type: ${post_type}`);
-    return { error: `Invalid post type "${post_type}". Must be discussion, image, or poll.` };
+    return { error: `Invalid post type "${post_type}". Must be discussion, image, poll, or event.` };
   }
   tParse.end(`title="${title}" type=${post_type}`);
 
@@ -324,6 +329,22 @@ export async function createPost(formData) {
       }
     } catch (parseErr) {
       console.error('[SERVER:posts] Failed to parse poll_options JSON:', parseErr.message);
+    }
+  }
+
+  // ── Step 8.5: Event insert ───────────────────────────────────────────────
+  if (post_type === 'event' && event_date) {
+    const tEvent = ts('db-insert-event');
+    const { error: eventErr } = await supabase.from('events').insert({
+      post_id: newPost.id,
+      event_date,
+      location_name
+    });
+    if (eventErr) {
+      tEvent.fail(eventErr);
+      console.error('[SERVER:posts] event insert error:', eventErr);
+    } else {
+      tEvent.end('Event details inserted');
     }
   }
 

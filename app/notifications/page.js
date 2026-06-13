@@ -82,7 +82,7 @@ export default function NotificationsPage() {
               let text = '';
               let link = '#';
 
-              if (notif.type === 'circle') {
+              if (notif.type === 'follow') {
                 Icon = UserPlus;
                 iconColor = 'text-accent-green';
                 bgColor = 'bg-accent-green/10';

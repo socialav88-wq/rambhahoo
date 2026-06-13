@@ -7,46 +7,33 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import { useAuthStore } from '@/store/authStore';
 import { logout } from '@/app/actions/auth';
-import { toggleCircle, checkInCircle } from '@/app/actions/circle';
+import { toggleFollow } from '@/app/actions/profile';
+import { useFollowing } from '@/hooks/useFollowing';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function ProfileHeader({ profile, isOwnProfile = false }) {
   const router = useRouter();
   const { user } = useAuthStore();
-  const [isPending, startTransition] = useTransition();
-  const [inCircle, setInCircle] = useState(false);
+  const { toggleFollow, isFollowingUser } = useFollowing();
   const [followersCount, setFollowersCount] = useState(profile?.followers_count || 0);
   
-  // Check circle status on mount
-  useEffect(() => {
-    if (!isOwnProfile && user && profile) {
-      checkInCircle(profile.id).then(setInCircle);
-    }
-  }, [isOwnProfile, user, profile]);
-  
   if (!profile) return null;
+  
+  const inCircle = isFollowingUser(profile.id);
 
   const handleLogout = async () => {
     await logout();
     router.push('/login');
   };
 
-  const handleToggleCircle = () => {
-    if (!user) return router.push('/login');
-    
-    // Optimistic UI update for 0ms latency
-    setInCircle(!inCircle);
+  const onToggleCircle = async () => {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
     setFollowersCount(prev => inCircle ? prev - 1 : prev + 1);
-    
-    startTransition(async () => {
-      const res = await toggleCircle(profile.id);
-      if (res?.error) {
-        // Rollback on error
-        setInCircle(!inCircle);
-        setFollowersCount(prev => inCircle ? prev + 1 : prev - 1);
-      }
-    });
+    await toggleFollow(profile.id, profile.display_name || profile.username);
   };
 
   return (
@@ -94,8 +81,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }) {
             ) : (
               <>
                 <Button 
-                  onClick={handleToggleCircle}
-                  disabled={isPending}
+                  onClick={onToggleCircle}
                   variant={inCircle ? 'outline' : 'primary'} 
                   className={`gap-2 rounded-full px-8 font-semibold shadow-sm ${inCircle ? 'text-accent-green border-accent-green/30 bg-accent-green/5' : 'shadow-blue-primary/20'}`}
                 >
