@@ -27,6 +27,20 @@ export async function toggleReaction(postId, commentId, emoji) {
       emoji,
     });
     if (error) return { error: error.message };
+
+    // Generate Notification
+    if (postId) {
+      const { data: post } = await supabase.from('posts').select('user_id').eq('id', postId).single();
+      if (post && post.user_id !== user.id) {
+        await supabase.from('notifications').insert({
+          user_id: post.user_id,
+          actor_id: user.id,
+          type: 'like',
+          reference_id: postId
+        });
+      }
+    }
+
     return { success: true, action: 'added' };
   }
 }
@@ -45,6 +59,20 @@ export async function addComment(postId, content, parentId = null) {
     .single();
 
   if (error) return { error: error.message };
+
+  // Generate Notification
+  if (postId) {
+    const { data: post } = await supabase.from('posts').select('user_id').eq('id', postId).single();
+    if (post && post.user_id !== user.id) {
+      await supabase.from('notifications').insert({
+        user_id: post.user_id,
+        actor_id: user.id,
+        type: 'comment',
+        reference_id: postId
+      });
+    }
+  }
+
   revalidatePath('/');
   return { success: true, comment: data };
 }

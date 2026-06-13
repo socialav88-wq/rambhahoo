@@ -27,7 +27,7 @@ export default function NotificationsPage() {
         .from('notifications')
         .select(`
           *,
-          sender:sender_id (username, display_name, avatar_url),
+          actor:actor_id (username, display_name, avatar_url),
           post:post_id (slug, title)
         `)
         .eq('user_id', user.id)
@@ -87,14 +87,14 @@ export default function NotificationsPage() {
                 iconColor = 'text-accent-green';
                 bgColor = 'bg-accent-green/10';
                 text = 'added you to their circle.';
-                link = `/profile/${notif.sender?.username}`;
+                link = `/profile/${notif.actor?.username}`;
               } else if (notif.type === 'comment') {
                 Icon = MessageSquare;
                 iconColor = 'text-blue-primary';
                 bgColor = 'bg-blue-primary/10';
                 text = 'commented on your post:';
                 link = `/post/${notif.post?.slug}`;
-              } else if (notif.type === 'reaction') {
+              } else if (notif.type === 'like') {
                 Icon = Heart;
                 iconColor = 'text-accent-red';
                 bgColor = 'bg-accent-red/10';
@@ -106,8 +106,8 @@ export default function NotificationsPage() {
                 <Link key={notif.id} href={link} className={`flex items-start gap-4 p-4 sm:p-5 hover:bg-bg-elevated transition-colors ${isUnread ? 'bg-blue-primary/5' : ''}`}>
                   <div className="relative shrink-0 mt-1">
                     <Avatar 
-                      src={notif.sender?.avatar_url} 
-                      name={notif.sender?.display_name || 'User'} 
+                      src={notif.actor?.avatar_url} 
+                      name={notif.actor?.display_name || 'User'} 
                       size="md" 
                     />
                     <div className={`absolute -bottom-1 -right-1 p-1 rounded-full border-2 border-bg-card ${bgColor} ${iconColor}`}>
@@ -118,7 +118,7 @@ export default function NotificationsPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-text-primary leading-snug">
                       <span className="font-semibold hover:underline">
-                        {notif.sender?.display_name || notif.sender?.username || 'Someone'}
+                        {notif.actor?.display_name || notif.actor?.username || 'Someone'}
                       </span>{' '}
                       <span className="text-text-muted">{text}</span>
                     </p>

@@ -26,7 +26,7 @@ export default function RealtimeProvider({ children }) {
           const { data: sender } = await supabase
             .from('profiles')
             .select('display_name, username')
-            .eq('id', notif.sender_id)
+            .eq('id', notif.actor_id)
             .single();
 
           const name = sender?.display_name || sender?.username || 'Someone';
@@ -40,7 +40,7 @@ export default function RealtimeProvider({ children }) {
           } else if (notif.type === 'comment') {
             message = `${name} commented on your post!`;
             icon = '💬';
-          } else if (notif.type === 'reaction') {
+          } else if (notif.type === 'like') {
             message = `${name} reacted to your post!`;
             icon = '❤️';
           } else {
