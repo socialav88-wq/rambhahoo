@@ -1,12 +1,17 @@
 import FeedContainer from '@/components/feed/FeedContainer';
 import { generateMetadata } from '@/lib/seo';
+import { fetchFeeds } from '@/app/actions/posts';
 
 export const metadata = generateMetadata({
   title: 'Rambhahoo | Hyderabad\'s Local Network',
   description: 'Join the conversation in Hyderabad. Local news, discussions, memes, and more.',
 });
 
-export default function Home() {
+export const dynamic = 'force-dynamic';
+
+export default async function Home() {
+  const initialPosts = await fetchFeeds('new');
+
   return (
     <div className="animate-fade-in">
       <div className="mb-4 md:hidden">
@@ -15,7 +20,7 @@ export default function Home() {
         </h1>
         <p className="text-text-muted text-sm">See what's happening around you</p>
       </div>
-      <FeedContainer />
+      <FeedContainer initialPosts={initialPosts} />
     </div>
   );
 }

@@ -64,7 +64,7 @@ export default function PollCard({ post }) {
 
       {/* Poll Options — interactive with real Supabase votes */}
       <div className="mb-4">
-        <PollVoter postId={id} options={poll_options} initialVotedOptionId={post.user_voted_option_id} compact />
+        <PollVoter postId={id} options={poll_options} initialVotedOptionId={post.user_voted_option_id} />
       </div>
 
       {/* Tags */}

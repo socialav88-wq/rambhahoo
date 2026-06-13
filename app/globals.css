@@ -4,21 +4,21 @@
   /* ===== PROFESSIONAL WHITE THEME ===== */
 
   /* Backgrounds */
-  --color-bg-primary: #F8FAFC;
+  --color-bg-primary: #FAFAFA;
   --color-bg-card: #FFFFFF;
-  --color-bg-card-hover: #F1F5F9;
-  --color-bg-elevated: #F1F5F9;
+  --color-bg-card-hover: #F8FAFC;
+  --color-bg-elevated: #F4F4F5;
 
   /* Brand */
-  --color-blue-primary: #2563EB;
-  --color-blue-hover: #1D4ED8;
-  --color-purple-secondary: #7C3AED;
-  --color-purple-hover: #6D28D9;
+  --color-blue-primary: #0A66C2; /* LinkedIn Premium Blue */
+  --color-blue-hover: #084E96;
+  --color-purple-secondary: #8B5CF6;
+  --color-purple-hover: #7C3AED;
 
   /* Text */
-  --color-text-primary: #0F172A;
-  --color-text-muted: #475569;
-  --color-text-dim: #94A3B8;
+  --color-text-primary: #09090B;
+  --color-text-muted: #52525B;
+  --color-text-dim: #A1A1AA;
 
   /* Semantic */
   --color-accent-green: #10B981;
@@ -26,8 +26,8 @@
   --color-accent-amber: #F59E0B;
 
   /* Borders */
-  --color-border: #E2E8F0;
-  --color-border-light: #CBD5E1;
+  --color-border: #E4E4E7;
+  --color-border-light: #F4F4F5;
 
   /* Fonts */
   --font-inter: 'Inter', sans-serif;
@@ -90,18 +90,21 @@ body {
 
 /* ===== UTILITY CLASSES ===== */
 .glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(226, 232, 240, 0.6);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
 }
 
 .hover-card {
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
 }
 .hover-card:hover {
-  background: #F1F5F9;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  background: #FFFFFF;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.06), 0 4px 10px -2px rgba(0, 0, 0, 0.04);
 }
 
 .gradient-text {

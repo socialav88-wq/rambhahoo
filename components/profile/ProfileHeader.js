@@ -1,6 +1,6 @@
 'use client';
 
-import { MapPin, Calendar, Link as LinkIcon, Settings } from 'lucide-react';
+import { MapPin, Calendar, Link as LinkIcon, Settings, UserPlus, Mail } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
@@ -19,94 +19,108 @@ export default function ProfileHeader({ profile, isOwnProfile = false }) {
   };
 
   return (
-    <div className="bg-bg-card border border-border rounded-2xl overflow-hidden mb-6 shadow-sm">
-      {/* Cover Photo */}
-      <div className="h-32 sm:h-48 bg-gradient-to-r from-blue-primary/10 via-bg-elevated to-purple-secondary/10 relative">
-        {/* Placeholder for cover image if we add it later */}
+    <div className="bg-bg-card rounded-3xl overflow-hidden mb-6 shadow-sm border border-border">
+      {/* Premium Cover Photo with Mesh Gradient */}
+      <div className="h-40 sm:h-56 bg-gradient-to-br from-blue-primary via-purple-secondary to-accent-amber relative overflow-hidden">
+        {/* Abstract overlay patterns */}
+        <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
       </div>
       
-      <div className="px-4 sm:px-6 pb-6 relative">
-        {/* Avatar & Actions */}
-        <div className="flex justify-between items-end -mt-12 sm:-mt-16 mb-4">
-          <div className="rounded-full p-1 bg-bg-card shadow-sm">
-            <Avatar 
-              src={profile.avatar_url} 
-              name={profile.display_name || profile.username} 
-              size="xl" 
-              className="w-24 h-24 sm:w-32 sm:h-32 border-4 border-bg-card" 
-            />
+      <div className="px-6 sm:px-10 pb-8 relative">
+        {/* Avatar & Main Actions */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 -mt-16 sm:-mt-20 mb-6">
+          <div className="relative inline-block">
+            <div className="rounded-full p-1.5 bg-bg-card shadow-md relative z-10">
+              <Avatar 
+                src={profile.avatar_url} 
+                name={profile.display_name || profile.username} 
+                size="xl" 
+                className="w-28 h-28 sm:w-36 sm:h-36 border-4 border-bg-elevated object-cover" 
+              />
+            </div>
+            {/* Online Status Indicator */}
+            <div className="absolute bottom-4 right-4 w-5 h-5 bg-accent-green rounded-full border-4 border-bg-card z-20" />
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex gap-3 mt-2 sm:mt-0">
             {isOwnProfile ? (
-              <Button variant="outline" size="sm" className="gap-2" onClick={handleLogout}>
-                <Settings size={16} />
-                <span className="hidden sm:inline">Log Out</span>
+              <Button variant="outline" className="gap-2 rounded-full px-6 font-semibold shadow-sm hover:shadow" onClick={handleLogout}>
+                <Settings size={18} />
+                <span>Log Out</span>
               </Button>
             ) : (
-              <Button size="sm">Follow</Button>
+              <>
+                <Button variant="outline" className="rounded-full px-4 text-text-dim hover:text-text-primary">
+                  <Mail size={18} />
+                </Button>
+                <Button variant="primary" className="gap-2 rounded-full px-8 font-semibold shadow-md shadow-blue-primary/20">
+                  <UserPlus size={18} />
+                  <span>Follow</span>
+                </Button>
+              </>
             )}
           </div>
         </div>
         
-        {/* Profile Info */}
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-text-primary">
-            {profile.display_name || profile.username}
-          </h1>
-          <p className="text-text-muted mt-0.5">@{profile.username}</p>
+        {/* Profile Info Section */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-text-primary tracking-tight">
+              {profile.display_name || profile.username}
+            </h1>
+            <Badge variant="primary" className="text-[10px] font-bold tracking-wider uppercase">
+              {profile.city || profile.locality || 'User'}
+            </Badge>
+          </div>
+          <p className="text-text-dim font-medium text-sm sm:text-base">@{profile.username}</p>
           
           {profile.bio && (
-            <p className="mt-3 text-sm text-text-primary whitespace-pre-wrap max-w-2xl leading-relaxed">
+            <p className="mt-4 text-base text-text-muted whitespace-pre-wrap max-w-3xl leading-relaxed">
               {profile.bio}
             </p>
           )}
           
           {/* Metadata */}
-          <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-text-dim">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-6 text-sm text-text-muted font-medium">
             {profile.location && (
-              <div className="flex items-center gap-1">
-                <MapPin size={14} />
+              <div className="flex items-center gap-1.5 hover:text-text-primary transition-colors cursor-default">
+                <MapPin size={16} className="text-text-dim" />
                 <span>{profile.location}</span>
               </div>
             )}
             {profile.website && (
-              <div className="flex items-center gap-1">
-                <LinkIcon size={14} />
-                <a href={profile.website} target="_blank" rel="noreferrer" className="text-blue-primary hover:underline">
+              <div className="flex items-center gap-1.5">
+                <LinkIcon size={16} className="text-text-dim" />
+                <a href={profile.website} target="_blank" rel="noreferrer" className="text-blue-primary hover:text-blue-hover transition-colors font-semibold hover:underline underline-offset-4">
                   {profile.website.replace(/^https?:\/\//, '')}
                 </a>
               </div>
             )}
-            <div className="flex items-center gap-1">
-              <Calendar size={14} />
-              <span>Joined {new Date(profile.created_at || Date.now()).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+            <div className="flex items-center gap-1.5 hover:text-text-primary transition-colors cursor-default">
+              <Calendar size={16} className="text-text-dim" />
+              <span>Joined {new Date(profile.created_at || Date.now()).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
             </div>
           </div>
-          
-          {/* Badges/Stats */}
-          <div className="flex gap-4 mt-5 pt-5 border-t border-border">
-            <div className="text-center">
-              <span className="block font-bold text-lg text-text-primary">{profile.posts_count || 0}</span>
-              <span className="text-xs text-text-muted">Posts</span>
-            </div>
-            <div className="text-center">
-              <span className="block font-bold text-lg text-text-primary">{profile.reputation_score || profile.karma || 0}</span>
-              <span className="text-xs text-text-muted">Reputation</span>
-            </div>
-            <div className="text-center">
-              <span className="block font-bold text-lg text-text-primary">{profile.followers_count || 0}</span>
-              <span className="text-xs text-text-muted">Followers</span>
-            </div>
-            <div className="text-center">
-              <span className="block font-bold text-lg text-text-primary">{profile.following_count || 0}</span>
-              <span className="text-xs text-text-muted">Following</span>
-            </div>
-            <div className="flex items-center ml-auto">
-              <Badge variant="primary" className="text-xs">
-                {profile.city || profile.locality || 'Rambhahoo User'}
-              </Badge>
-            </div>
+        </div>
+        
+        {/* Premium Stats Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-border-light">
+          <div className="bg-bg-elevated/50 rounded-2xl p-4 text-center hover:bg-bg-elevated transition-colors cursor-pointer">
+            <span className="block font-black text-2xl text-text-primary mb-1">{profile.posts_count || 0}</span>
+            <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Posts</span>
+          </div>
+          <div className="bg-bg-elevated/50 rounded-2xl p-4 text-center hover:bg-bg-elevated transition-colors cursor-pointer">
+            <span className="block font-black text-2xl text-blue-primary mb-1">{profile.reputation_score || profile.karma || 0}</span>
+            <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Reputation</span>
+          </div>
+          <div className="bg-bg-elevated/50 rounded-2xl p-4 text-center hover:bg-bg-elevated transition-colors cursor-pointer">
+            <span className="block font-black text-2xl text-text-primary mb-1">{profile.followers_count || 0}</span>
+            <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Followers</span>
+          </div>
+          <div className="bg-bg-elevated/50 rounded-2xl p-4 text-center hover:bg-bg-elevated transition-colors cursor-pointer">
+            <span className="block font-black text-2xl text-text-primary mb-1">{profile.following_count || 0}</span>
+            <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Following</span>
           </div>
         </div>
       </div>

@@ -9,15 +9,21 @@ import { Flame } from 'lucide-react';
 import { fetchFeeds } from '@/app/actions/posts';
 
 
-export default function FeedContainer({ initialFilter = 'new', localitySlug = null }) {
+export default function FeedContainer({ initialFilter = 'new', localitySlug = null, initialPosts = null }) {
   const [filter, setFilter] = useState(initialFilter);
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState(initialPosts || []);
+  const [loading, setLoading] = useState(!initialPosts);
   const [userLocation, setUserLocation] = useState(null);
 
   // Fetch from Supabase
   useEffect(() => {
     let mounted = true;
+    
+    // Skip initial fetch if we already have initialPosts and filter hasn't changed
+    if (initialPosts && filter === initialFilter && !userLocation && filter !== 'nearby') {
+      return;
+    }
+    
     setLoading(true);
     
     async function loadData(lat = null, lng = null) {
@@ -55,7 +61,7 @@ export default function FeedContainer({ initialFilter = 'new', localitySlug = nu
     }
     
     return () => { mounted = false; };
-  }, [filter, localitySlug, userLocation]);
+  }, [filter, localitySlug, userLocation, initialFilter, initialPosts]);
 
   return (
     <div className="space-y-4">
