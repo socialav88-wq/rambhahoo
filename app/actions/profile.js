@@ -30,7 +30,8 @@ export async function updateProfile(formData) {
 
   const { error } = await supabase
     .from('profiles')
-    .upsert({ id: user.id, ...updates }, { onConflict: 'id' });
+    .update(updates)
+    .eq('id', user.id);
 
   if (error) {
     console.error('Profile update error:', error);

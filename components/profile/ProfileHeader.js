@@ -81,7 +81,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }) {
           <div className="flex gap-3 justify-center mb-6">
             {isOwnProfile ? (
               <>
-                <Link href="/settings/profile">
+                <Link href="/settings">
                   <Button variant="outline" className="gap-2 rounded-full px-6 font-semibold shadow-sm hover:shadow text-text-primary">
                     <Edit3 size={18} />
                     <span>Edit Profile</span>
