@@ -7,6 +7,7 @@ import { FeedSkeleton } from '@/components/ui/Skeleton';
 import Button from '@/components/ui/Button';
 import { Flame } from 'lucide-react';
 import { fetchFeeds } from '@/app/actions/posts';
+import { useFeedStore } from '@/store/feedStore';
 
 
 export default function FeedContainer({ initialFilter = 'new', localitySlug = null, initialPosts = null }) {
@@ -14,6 +15,9 @@ export default function FeedContainer({ initialFilter = 'new', localitySlug = nu
   const [posts, setPosts] = useState(initialPosts || []);
   const [loading, setLoading] = useState(!initialPosts);
   const [userLocation, setUserLocation] = useState(null);
+  
+  const { optimisticPosts } = useFeedStore();
+  const allPosts = [...optimisticPosts, ...posts];
 
   // Fetch from Supabase
   useEffect(() => {
@@ -73,7 +77,7 @@ export default function FeedContainer({ initialFilter = 'new', localitySlug = nu
       {/* Empty State / Loading / Posts */}
       {loading ? (
         <FeedSkeleton count={3} />
-      ) : posts.length === 0 ? (
+      ) : allPosts.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 bg-bg-card rounded-xl border border-border border-dashed text-center shadow-sm">
           <div className="w-16 h-16 bg-bg-elevated rounded-full flex items-center justify-center mb-4">
             <Flame size={32} className="text-text-dim" />
@@ -86,7 +90,7 @@ export default function FeedContainer({ initialFilter = 'new', localitySlug = nu
         </div>
       ) : (
         <div className="space-y-4">
-          {posts.map(post => (
+          {allPosts.map(post => (
             <PostCard key={post.id} post={post} />
           ))}
           

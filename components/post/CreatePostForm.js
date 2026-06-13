@@ -6,7 +6,9 @@ import { Image as ImageIcon, BarChart3, MapPin, X, MessageSquare, CheckCircle2 }
 import Button from '@/components/ui/Button';
 import { POST_TYPES, LOCALITIES } from '@/lib/constants';
 import { useAuthStore } from '@/store/authStore';
+import { useFeedStore } from '@/store/feedStore';
 import { createPost } from '@/app/actions/posts';
+import toast from 'react-hot-toast';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -64,6 +66,7 @@ function getSupabaseClient() {
 export default function CreatePostForm() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { addOptimisticPost, removeOptimisticPost, updateOptimisticPost } = useFeedStore();
 
   const [postType, setPostType]         = useState('discussion');
   const [title, setTitle]               = useState('');
@@ -151,82 +154,9 @@ export default function CreatePostForm() {
       }
       tFormData.end(`locality=${locality || 'none'} tags="${tags || 'none'}" gps=${gpsLocation ? 'yes' : 'no'}`);
 
-      // ── STEP 3: Image upload (image only) ───────────────────────────────
-      if (postType === 'image') {
-        if (!imageFile) {
-          setError('Please upload an image for image posts.');
-          setIsSubmitting(false);
-          setUploadStatus('');
-          console.groupEnd();
-          return;
-        }
-        if (imageFile.size > 20 * 1024 * 1024) {
-          setError('Image is too large. Max 20 MB.');
-          setIsSubmitting(false);
-          setUploadStatus('');
-          console.groupEnd();
-          return;
-        }
+      // Note: Image upload moved to background task
 
-        console.log(`[CREATE-POST] Image: name=${imageFile.name} size=${(imageFile.size/1024/1024).toFixed(2)}MB type=${imageFile.type}`);
-
-        // 3a — Compress
-        setUploadStatus('Compressing image...');
-        const fileToUpload = await compressImage(imageFile);
-
-        // 3b — Init Supabase client
-        setUploadStatus('Connecting to storage...');
-        let supabase;
-        try {
-          supabase = getSupabaseClient();
-        } catch (clientErr) {
-          setError(`Storage client failed: ${clientErr.message}`);
-          setIsSubmitting(false);
-          setUploadStatus('');
-          console.groupEnd();
-          return;
-        }
-
-        // 3c — Upload
-        setUploadStatus('Uploading image...');
-        const ext  = (fileToUpload.name || imageFile.name).split('.').pop()?.toLowerCase() || 'jpg';
-        const path = `${user.id}/${Date.now()}.${ext}`;
-        console.log(`[CREATE-POST] Uploading to storage bucket: RAMBHAHOO path: ${path}`);
-
-        const tUpload = T('storage-upload');
-        const { error: upErr } = await supabase.storage
-          .from('RAMBHAHOO')
-          .upload(path, fileToUpload, { contentType: fileToUpload.type });
-
-        if (upErr) {
-          tUpload.fail(upErr);
-          console.error('[CREATE-POST] Storage error details:', JSON.stringify(upErr));
-          setError(`Image upload failed: ${upErr.message}`);
-          setIsSubmitting(false);
-          setUploadStatus('');
-          console.groupEnd();
-          return;
-        }
-        tUpload.end(`path=${path}`);
-
-        const { data: urlData } = supabase.storage.from('RAMBHAHOO').getPublicUrl(path);
-        console.log('[CREATE-POST] Public URL:', urlData.publicUrl);
-        formData.append('image_url', urlData.publicUrl);
-      }
-
-      // ── STEP 4: Poll validation ─────────────────────────────────────────
-      if (postType === 'poll') {
-        const validOptions = pollOptions.filter(o => o.trim());
-        console.log(`[CREATE-POST] Poll options (${validOptions.length} valid):`, validOptions);
-        if (validOptions.length < 2) {
-          setError('Polls need at least 2 options.');
-          setIsSubmitting(false);
-          setUploadStatus('');
-          console.groupEnd();
-          return;
-        }
-        formData.append('poll_options', JSON.stringify(validOptions));
-      }
+      // Note: Poll validation moved to optimistic phase
 
       // ── STEP 5: Discussion content check ───────────────────────────────
       if (postType === 'discussion' && !content.trim()) {
@@ -237,46 +167,83 @@ export default function CreatePostForm() {
         return;
       }
 
-      // ── STEP 6: Server action call ──────────────────────────────────────
-      setUploadStatus('Saving post...');
-      console.time('create-post');
-      const tAction = T('server-action:createPost');
-      console.log('[CREATE-POST] Calling createPost server action...');
-      console.log('[CREATE-POST] FormData keys:', [...formData.keys()]);
+      // ── OPTIMISTIC UI: INSTANT NAVIGATION ──────────────────────────────
+      const tempId = 'temp-' + Date.now();
+      const validOptions = postType === 'poll' ? pollOptions.filter(o => o.trim()) : [];
+      
+      const fakePost = {
+        id: tempId,
+        isOptimistic: true,
+        post_type: postType,
+        title: title.trim(),
+        content: content.trim(),
+        image_url: imagePreview || null, // the local blob URL
+        created_at: new Date().toISOString(),
+        user_id: user.id,
+        comment_count: 0,
+        upvotes: 0,
+        downvotes: 0,
+        profiles: {
+          username: user.user_metadata?.username || user.email?.split('@')[0] || 'User',
+          display_name: user.user_metadata?.display_name || 'You',
+          avatar_url: user.user_metadata?.avatar_url,
+        },
+        poll_options: postType === 'poll' ? validOptions.map((o, i) => ({ id: `temp-opt-${i}`, option_text: o, vote_count: 0, sort_order: i })) : []
+      };
 
-      let result;
-      try {
-        result = await createPost(formData);
-      } catch (actionErr) {
-        tAction.fail(actionErr);
-        console.timeEnd('create-post');
-        throw actionErr;
-      }
-      const actionMs = tAction.end(`result=${JSON.stringify(result)}`);
-      console.timeEnd('create-post');
+      // Instantly inject into the global feed
+      addOptimisticPost(fakePost);
+      
+      // Instantly navigate back
+      toast('Posting...', { icon: '🚀' });
+      router.push('/');
+      console.groupEnd();
 
-      // ── STEP 7: Handle result ───────────────────────────────────────────
-      if (result?.error) {
-        console.error('[CREATE-POST] Server returned error:', result.error);
-        setError(result.error);
-      } else if (result?.slug) {
-        const tTotal_ms = tTotal.end(`slug=${result.slug} action=${actionMs}ms`);
-        console.log(`[CREATE-POST] ✅ SUCCESS — total=${tTotal_ms}ms`);
-        console.groupEnd();
-        router.push(`/post/${result.slug}`);
-        return;
-      } else {
-        console.warn('[CREATE-POST] No slug returned, redirecting to feed. Result:', result);
-        tTotal.end('no-slug fallback');
-        console.groupEnd();
-        router.push('/');
-        return;
-      }
+      // ── BACKGROUND TASK: HEAVY LIFTING ─────────────────────────────────
+      (async () => {
+        try {
+          // 3. Image Upload (Background)
+          if (postType === 'image' && imageFile) {
+            const fileToUpload = await compressImage(imageFile);
+            const supabase = getSupabaseClient();
+            const ext  = (fileToUpload.name || imageFile.name).split('.').pop()?.toLowerCase() || 'jpg';
+            const path = `${user.id}/${Date.now()}.${ext}`;
+
+            const { error: upErr } = await supabase.storage
+              .from('RAMBHAHOO')
+              .upload(path, fileToUpload, { contentType: fileToUpload.type });
+
+            if (upErr) throw new Error(`Image upload failed: ${upErr.message}`);
+
+            const { data: urlData } = supabase.storage.from('RAMBHAHOO').getPublicUrl(path);
+            formData.set('image_url', urlData.publicUrl);
+          }
+
+          if (postType === 'poll') {
+            formData.set('poll_options', JSON.stringify(validOptions));
+          }
+
+          // 6. Server Action Call
+          const result = await createPost(formData);
+          
+          if (result?.error) {
+            throw new Error(result.error);
+          } else if (result?.slug) {
+            // Replace the fake post with the real one (or just remove the fake and let Feed revalidate)
+            // It's safer to remove it so it's fully re-fetched if we do a hard refresh, but for SPA:
+            removeOptimisticPost(tempId);
+            toast.success('Posted successfully!');
+          }
+        } catch (err) {
+          console.error('[CREATE-POST] Background Task Error:', err);
+          updateOptimisticPost(tempId, { hasError: true, errorMessage: err.message });
+          toast.error(`Failed to post: ${err.message}`);
+        }
+      })();
+
     } catch (err) {
       console.error('[CREATE-POST] ✘ UNCAUGHT ERROR:', err);
-      console.error('[CREATE-POST] Stack:', err?.stack);
       setError(`Unexpected error: ${err?.message || String(err)}`);
-    } finally {
       setIsSubmitting(false);
       setUploadStatus('');
       console.groupEnd();

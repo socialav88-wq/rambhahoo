@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 export const useFeedStore = create((set) => ({
   posts: [],
+  optimisticPosts: [],
   filter: 'hot',
   locality: null,
   hasMore: true,
@@ -18,7 +19,18 @@ export const useFeedStore = create((set) => ({
   
   updatePost: (postId, updates) => set((state) => ({
     posts: state.posts.map(p => p.id === postId ? { ...p, ...updates } : p),
+    optimisticPosts: state.optimisticPosts.map(p => p.id === postId ? { ...p, ...updates } : p),
+  })),
+
+  addOptimisticPost: (post) => set((state) => ({
+    optimisticPosts: [post, ...state.optimisticPosts]
+  })),
+  removeOptimisticPost: (tempId) => set((state) => ({
+    optimisticPosts: state.optimisticPosts.filter(p => p.id !== tempId)
+  })),
+  updateOptimisticPost: (tempId, updates) => set((state) => ({
+    optimisticPosts: state.optimisticPosts.map(p => p.id === tempId ? { ...p, ...updates } : p)
   })),
   
-  reset: () => set({ posts: [], filter: 'hot', locality: null, hasMore: true, page: 0 }),
+  reset: () => set({ posts: [], optimisticPosts: [], filter: 'hot', locality: null, hasMore: true, page: 0 }),
 }));
