@@ -14,32 +14,9 @@ export async function updateProfile(formData) {
   const displayName = formData.get('displayName');
   const bio = formData.get('bio');
   const username = formData.get('username');
-  const avatarFile = formData.get('avatar');
   const avatarUrlString = formData.get('avatarUrl');
 
   let avatarUrl = avatarUrlString || undefined;
-
-  // Handle avatar upload if exists
-  if (avatarFile && avatarFile.size > 0) {
-    const fileExt = avatarFile.name.split('.').pop();
-    const fileName = `${user.id}-${Math.random()}.${fileExt}`;
-    const filePath = `${user.id}/avatars/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('RAMBHAHOO')
-      .upload(filePath, avatarFile);
-
-    if (uploadError) {
-      console.error('Avatar upload error:', uploadError);
-      return { error: 'Failed to upload avatar' };
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('RAMBHAHOO')
-      .getPublicUrl(filePath);
-      
-    avatarUrl = publicUrl;
-  }
 
   // Update profiles table
   const updates = {
@@ -62,8 +39,7 @@ export async function updateProfile(formData) {
     return { error: error.message };
   }
 
-  revalidatePath('/profile');
-  revalidatePath('/settings');
+  revalidatePath('/', 'layout');
   
   return { success: true };
 }

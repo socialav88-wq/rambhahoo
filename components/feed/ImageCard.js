@@ -21,7 +21,7 @@ export default function ImageCard({ post }) {
   } = post;
 
   return (
-    <article className="bg-bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow overflow-hidden animate-fade-in">
+    <article className="glass-card hover-card rounded-2xl overflow-hidden animate-fade-in">
       {/* Image */}
       <Link href={`/post/${slug}`} className="block relative">
         {image_url ? (

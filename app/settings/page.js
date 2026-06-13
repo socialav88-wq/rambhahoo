@@ -45,24 +45,44 @@ export default function SettingsPage() {
     }
   };
 
-  const generateAvatar = async () => {
-    const seed = Math.random().toString(36).substring(7);
-    const url = `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf,ffd5dc`;
-    setAvatarPreview(url);
-    setAvatarFile(null); // Clear file upload
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     
+    let finalAvatarUrl = profile.avatar_url;
+
+    // Client-side image upload (more reliable than passing File to server action)
+    if (avatarFile) {
+      try {
+        const supabase = createClient();
+        const fileExt = avatarFile.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const filePath = `${user.id}/avatars/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('RAMBHAHOO')
+          .upload(filePath, avatarFile, { contentType: avatarFile.type });
+
+        if (uploadError) {
+          alert('Failed to upload image: ' + uploadError.message);
+          setIsSubmitting(false);
+          return;
+        }
+
+        const { data } = supabase.storage.from('RAMBHAHOO').getPublicUrl(filePath);
+        finalAvatarUrl = data.publicUrl;
+      } catch (err) {
+        alert('Upload error: ' + err.message);
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     const formData = new FormData();
     formData.append('displayName', displayName);
     formData.append('bio', bio);
-    if (avatarFile) {
-      formData.append('avatar', avatarFile);
-    } else if (avatarPreview.includes('dicebear.com')) {
-      formData.append('avatarUrl', avatarPreview);
+    if (finalAvatarUrl) {
+      formData.append('avatarUrl', finalAvatarUrl);
     }
     
     const result = await updateProfile(formData);
@@ -109,23 +129,17 @@ export default function SettingsPage() {
               <Avatar src={avatarPreview} name={displayName || profile.username} size="lg" className="w-24 h-24 text-3xl" />
               <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                 <Camera size={24} />
-                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" onChange={handleAvatarChange} />
               </label>
             </div>
             <div className="text-center sm:text-left">
               <h3 className="font-medium text-text-primary mb-1">Profile Picture</h3>
               <p className="text-sm text-text-dim mb-3">JPG, GIF or PNG. 2MB max.</p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <label className="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-bg-elevated hover:bg-border border border-border rounded-lg text-sm font-medium cursor-pointer transition-colors">
-                  <ImageIcon size={16} />
-                  Upload Image
-                  <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-                </label>
-                <button type="button" onClick={generateAvatar} className="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-blue-primary/10 hover:bg-blue-primary/20 text-blue-primary border border-blue-primary/20 rounded-lg text-sm font-medium cursor-pointer transition-colors">
-                  <User size={16} />
-                  Generate Avatar
-                </button>
-              </div>
+              <label className="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-bg-elevated hover:bg-border border border-border rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                <ImageIcon size={16} />
+                Upload New Image
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" onChange={handleAvatarChange} />
+              </label>
             </div>
           </div>
 

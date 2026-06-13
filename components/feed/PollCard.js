@@ -22,7 +22,7 @@ export default function PollCard({ post }) {
   } = post;
 
   return (
-    <article className="bg-bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow p-4 animate-fade-in">
+    <article className="glass-card hover-card rounded-2xl p-5 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-3 mb-3">
         <Link href={`/profile/${author?.username || ''}`}>
