@@ -2,12 +2,14 @@ import Link from 'next/link';
 import { TrendingUp, MessageSquare, Flame } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
 import { fetchTrendingTags, fetchHotDiscussions, fetchActivePolls } from '@/app/actions/posts';
+import { fetchTopUsers } from '@/app/actions/profile';
 
 export default async function RightSidebar() {
-  const [trendingTags, hotDiscussions, activePolls] = await Promise.all([
+  const [trendingTags, hotDiscussions, activePolls, topUsers] = await Promise.all([
     fetchTrendingTags(),
     fetchHotDiscussions(),
-    fetchActivePolls()
+    fetchActivePolls(),
+    fetchTopUsers()
   ]);
 
   return (
@@ -88,6 +90,37 @@ export default async function RightSidebar() {
                 >
                   <p className="text-sm text-text-primary">{poll.question}</p>
                   <p className="text-xs text-text-dim mt-1">🗳️ {poll.votes || 0} votes</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Top Users */}
+        {topUsers.length > 0 && (
+          <div className="bg-bg-card rounded-xl border border-border shadow-sm p-4 animate-fade-in">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-base">🏆</span>
+              <h3 className="font-semibold text-sm text-text-primary font-[family-name:var(--font-poppins)]">Top Neighbors</h3>
+            </div>
+            <div className="space-y-3">
+              {topUsers.map((u) => (
+                <Link
+                  key={u.username}
+                  href={`/profile/${u.username}`}
+                  className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-bg-card-hover transition-colors -mx-1"
+                >
+                  <div className="w-8 h-8 rounded-full bg-blue-primary/10 flex items-center justify-center shrink-0">
+                    {u.avatar_url ? (
+                      <img src={u.avatar_url} alt={u.username} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      <span className="text-blue-primary text-xs font-bold">{u.display_name?.charAt(0) || u.username.charAt(0)}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-text-primary truncate">{u.display_name || u.username}</p>
+                    <p className="text-xs text-text-muted truncate">@{u.username}</p>
+                  </div>
                 </Link>
               ))}
             </div>

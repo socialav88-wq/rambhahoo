@@ -117,3 +117,16 @@ export async function fetchUserPosts(userId) {
   if (error) return [];
   return data || [];
 }
+
+export async function fetchTopUsers() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('username, display_name, avatar_url')
+    .not('username', 'is', null)
+    .order('created_at', { ascending: true })
+    .limit(5);
+    
+  if (error) return [];
+  return data || [];
+}

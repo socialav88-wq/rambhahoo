@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import PostCard from '@/components/feed/PostCard';
+import Breadcrumbs from '@/components/ui/Breadcrumbs';
 import { generateProfileMetadata } from '@/lib/seo';
 import { fetchUserProfile, fetchUserPosts } from '@/app/actions/profile';
 import { Flame } from 'lucide-react';
@@ -37,7 +38,8 @@ export default async function ProfilePage({ params }) {
   const posts = await fetchUserPosts(profile.id);
 
   return (
-    <div className="animate-fade-in py-4">
+    <div className="animate-fade-in py-2">
+      <Breadcrumbs items={[{ label: 'Users', href: '/search' }, { label: profile.display_name || profile.username, href: `/profile/${profile.username}` }]} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

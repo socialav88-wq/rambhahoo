@@ -1,5 +1,6 @@
 import { fetchPostBySlug } from '@/app/actions/posts';
 import PostDetail from '@/components/post/PostDetail';
+import Breadcrumbs from '@/components/ui/Breadcrumbs';
 import { generatePostMetadata } from '@/lib/seo';
 import { notFound } from 'next/navigation';
 
@@ -20,7 +21,11 @@ export default async function PostPage({ params }) {
   if (!post) notFound();
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in py-2">
+      <Breadcrumbs items={[
+        ...(post.localities ? [{ label: `${post.localities.name} Community`, href: `/${post.localities.slug}` }] : []),
+        { label: post.title, href: `/post/${post.slug}` }
+      ]} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

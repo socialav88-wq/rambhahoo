@@ -6,7 +6,7 @@ import { searchPosts } from '@/app/actions/posts';
 export const dynamic = 'force-dynamic';
 
 export const metadata = generateMetadata({
-  title: 'Explore',
+  title: 'Search Communities, Users and Posts',
   description: 'Search for discussions, people, and topics in your neighborhood.',
 });
 

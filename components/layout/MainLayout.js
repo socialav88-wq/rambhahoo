@@ -4,12 +4,13 @@ import LeftSidebar from './LeftSidebar';
 import RightSidebar from './RightSidebar';
 import ToastContainer from '@/components/ui/Toast';
 import PWAInstallPrompt from '@/components/ui/PWAInstallPrompt';
+import Footer from './Footer';
 
 export default function MainLayout({ children }) {
   return (
-    <div className="min-h-screen bg-bg-primary">
+    <div className="min-h-screen bg-bg-primary flex flex-col">
       <Navbar />
-      <div className="mx-auto max-w-7xl px-4 py-4">
+      <div className="mx-auto max-w-7xl px-4 py-4 flex-1 w-full">
         <div className="flex gap-6">
           <LeftSidebar />
           <main className="flex-1 min-w-0 pb-20 md:pb-4">
@@ -18,6 +19,7 @@ export default function MainLayout({ children }) {
           <RightSidebar />
         </div>
       </div>
+      <Footer />
       <BottomNav />
       <ToastContainer />
       <PWAInstallPrompt />

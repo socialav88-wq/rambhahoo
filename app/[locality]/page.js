@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import FeedContainer from '@/components/feed/FeedContainer';
 import LocalityHeader from '@/components/locality/LocalityHeader';
+import Breadcrumbs from '@/components/ui/Breadcrumbs';
 import { getLocalityBySlug, isValidLocality } from '@/lib/utils';
 import { generateLocalityMetadata } from '@/lib/seo';
 
@@ -21,7 +22,8 @@ export default async function LocalityPage({ params }) {
   const locality = getLocalityBySlug(slug);
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in py-2">
+      <Breadcrumbs items={[{ label: `${locality.name} Community`, href: `/${locality.slug}` }]} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

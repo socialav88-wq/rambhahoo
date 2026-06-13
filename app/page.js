@@ -3,6 +3,7 @@ import { generateMetadata } from '@/lib/seo';
 import { fetchFeeds } from '@/app/actions/posts';
 
 export const metadata = generateMetadata({
+  exactTitle: 'Rambhahoo - Local Social Network and Community Platform',
   description: 'Join the conversation in Hyderabad. Local news, discussions, memes, and more.',
 });
 

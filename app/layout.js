@@ -49,18 +49,34 @@ export default function RootLayout({ children }) {
             <script
               type="application/ld+json"
               dangerouslySetInnerHTML={{
-                __html: JSON.stringify({
-                  '@context': 'https://schema.org',
-                  '@type': 'WebSite',
-                  name: 'Rambhahoo',
-                  description: 'Hyderabad\'s hyperlocal social network',
-                  url: 'https://www.rambhahoo.com',
-                  potentialAction: {
-                    '@type': 'SearchAction',
-                    target: 'https://www.rambhahoo.com/search?q={search_term_string}',
-                    'query-input': 'required name=search_term_string',
+                __html: JSON.stringify([
+                  {
+                    '@context': 'https://schema.org',
+                    '@type': 'WebSite',
+                    name: 'Rambhahoo',
+                    description: 'Hyderabad\'s hyperlocal social network',
+                    url: 'https://www.rambhahoo.com',
+                    potentialAction: {
+                      '@type': 'SearchAction',
+                      target: 'https://www.rambhahoo.com/search?q={search_term_string}',
+                      'query-input': 'required name=search_term_string',
+                    },
                   },
-                })
+                  {
+                    '@context': 'https://schema.org',
+                    '@type': 'Organization',
+                    name: 'Rambhahoo',
+                    url: 'https://www.rambhahoo.com',
+                    logo: 'https://www.rambhahoo.com/icon-192x192.png',
+                    sameAs: [
+                      'https://twitter.com/rambhahoo',
+                      'https://instagram.com/rambhahoo',
+                      'https://youtube.com/rambhahoo',
+                      'https://linkedin.com/company/rambhahoo',
+                      'https://facebook.com/rambhahoo'
+                    ]
+                  }
+                ])
               }}
             />
             <MainLayout>
