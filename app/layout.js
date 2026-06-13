@@ -35,14 +35,21 @@ export default function RootLayout({ children }) {
         <Toaster 
           position="top-center" 
           toastOptions={{
+            duration: 3000,
             style: {
-              background: '#333',
-              color: '#fff',
-              borderRadius: '12px',
+              background: 'rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              color: '#1e293b',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+              borderRadius: '16px',
               fontFamily: 'var(--font-inter)',
               fontSize: '14px',
               fontWeight: 500,
+              padding: '12px 20px',
             },
+            className: 'animate-bounce-in',
           }} 
         />
         <AuthProvider>

@@ -83,8 +83,10 @@ export async function fetchFeeds(filter = 'new', localitySlug = null, lat = null
   });
 
   let userVotesMap = {};
+  let userReactionsMap = {};
   const { data: { user } } = await supabase.auth.getUser();
   if (user && postIds.length > 0) {
+    // Fetch Poll Votes
     const { data: pollVotes } = await supabase
       .from('poll_votes')
       .select('post_id, poll_option_id')
@@ -94,12 +96,25 @@ export async function fetchFeeds(filter = 'new', localitySlug = null, lat = null
     (pollVotes || []).forEach(v => {
       userVotesMap[v.post_id] = v.poll_option_id;
     });
+
+    // Fetch User Reactions
+    const { data: userReactions } = await supabase
+      .from('reactions')
+      .select('post_id, emoji')
+      .eq('user_id', user.id)
+      .in('post_id', postIds);
+
+    (userReactions || []).forEach(r => {
+      if (!userReactionsMap[r.post_id]) userReactionsMap[r.post_id] = [];
+      userReactionsMap[r.post_id].push(r.emoji);
+    });
   }
 
   return data.map(post => ({ 
     ...post, 
     reactions_summary: summaryMap[post.id] || {},
-    user_voted_option_id: userVotesMap[post.id] || null
+    user_voted_option_id: userVotesMap[post.id] || null,
+    user_reactions: userReactionsMap[post.id] || []
   }));
 }
 
@@ -131,18 +146,30 @@ export async function fetchPostBySlug(slug) {
   (reactions || []).forEach(r => { summary[r.emoji] = (summary[r.emoji] || 0) + 1; });
 
   let userVotedOptionId = null;
+  let userReactionsArr = [];
   const { data: { user } } = await supabase.auth.getUser();
-  if (user && data.post_type === 'poll') {
-    const { data: vote } = await supabase
-      .from('poll_votes')
-      .select('poll_option_id')
+  if (user) {
+    if (data.post_type === 'poll') {
+      const { data: vote } = await supabase
+        .from('poll_votes')
+        .select('poll_option_id')
+        .eq('user_id', user.id)
+        .eq('post_id', data.id)
+        .single();
+      if (vote) userVotedOptionId = vote.poll_option_id;
+    }
+    const { data: userReactions } = await supabase
+      .from('reactions')
+      .select('emoji')
       .eq('user_id', user.id)
-      .eq('post_id', data.id)
-      .single();
-    if (vote) userVotedOptionId = vote.poll_option_id;
+      .eq('post_id', data.id);
+    
+    if (userReactions) {
+      userReactionsArr = userReactions.map(r => r.emoji);
+    }
   }
 
-  return { ...data, reactions_summary: summary, user_voted_option_id: userVotedOptionId };
+  return { ...data, reactions_summary: summary, user_voted_option_id: userVotedOptionId, user_reactions: userReactionsArr };
 }
 
 // ===== CREATE POST =====

@@ -17,8 +17,14 @@ export default function PostFooter({ post }) {
   
   // Local optimistic state for reactions
   const [localReactions, setLocalReactions] = useState(post.reactions_summary || {});
-  // We can't easily track user's own reactions without it being passed down,
-  // but for the feed, optimistic counts are fine.
+  
+  // The default emoji triggered by the main like button
+  const defaultEmoji = '👍';
+  
+  // Track if the current user has reacted with the default emoji
+  const initialHasLiked = (post.user_reactions || []).includes(defaultEmoji);
+  const [hasLiked, setHasLiked] = useState(initialHasLiked);
+  const [likeAnimate, setLikeAnimate] = useState(false);
 
   const timeoutRef = useRef(null);
 
@@ -39,27 +45,51 @@ export default function PostFooter({ post }) {
     setShowPicker(false);
     setIsReacting(true);
     
+    const isDefaultEmoji = emoji === defaultEmoji;
+    
     // Optimistic update
     const currentCount = localReactions[emoji] || 0;
+    
+    if (isDefaultEmoji) {
+      setHasLiked(!hasLiked); // toggle
+      if (!hasLiked) {
+        setLikeAnimate(true);
+        setTimeout(() => setLikeAnimate(false), 500); // Reset animation state
+      }
+    }
+    
+    // We assume toggle logic here. If we are toggling on: +1, off: -1
+    // For simplicity, we just assume we are adding unless it's already there (for the default emoji)
+    let newCount;
+    if (isDefaultEmoji) {
+      newCount = hasLiked ? Math.max(0, currentCount - 1) : currentCount + 1;
+    } else {
+      newCount = currentCount + 1; // picker always acts as add initially
+    }
+    
     setLocalReactions({
       ...localReactions,
-      [emoji]: currentCount + 1
+      [emoji]: newCount
     });
 
     const res = await toggleReaction(post.id, null, emoji);
     if (res?.error) {
       // Revert if error
+      if (isDefaultEmoji) setHasLiked(hasLiked);
       setLocalReactions({
         ...localReactions,
         [emoji]: currentCount
       });
       toast.error('Failed to react');
     } else if (res?.action === 'removed') {
-      // It was a toggle-off
+      // It was actually a toggle-off
+      if (isDefaultEmoji) setHasLiked(false);
       setLocalReactions({
         ...localReactions,
-        [emoji]: Math.max(0, currentCount - 1)
+        [emoji]: Math.max(0, currentCount - (isDefaultEmoji ? 0 : 1)) // If it was default emoji, we already subtracted it optimistically
       });
+    } else if (res?.action === 'added') {
+      if (isDefaultEmoji) setHasLiked(true);
     }
     setIsReacting(false);
   };
@@ -82,11 +112,15 @@ export default function PostFooter({ post }) {
       <div className="flex items-center gap-2 relative" onMouseLeave={handleMouseLeave}>
         <div onMouseEnter={handleMouseEnter} className="relative z-10">
            <button 
-             onClick={(e) => { e.preventDefault(); handleReact('👍'); }}
+             onClick={(e) => { e.preventDefault(); handleReact(defaultEmoji); }}
              disabled={isReacting}
-             className="flex items-center gap-1.5 p-2 text-text-dim hover:bg-bg-elevated hover:text-blue-primary rounded-full transition-all active:scale-95"
+             className={`flex items-center gap-1.5 p-2 rounded-full transition-all active:scale-95 ${
+               hasLiked 
+                 ? 'text-pink-500 bg-pink-500/10' 
+                 : 'text-text-dim hover:bg-bg-elevated hover:text-pink-500'
+             } ${likeAnimate ? 'animate-bounce-in scale-110' : ''}`}
            >
-             <ThumbsUp size={18} />
+             <ThumbsUp size={18} className={hasLiked ? 'fill-current' : ''} />
              <span className="text-xs font-medium">Like</span>
            </button>
         </div>
