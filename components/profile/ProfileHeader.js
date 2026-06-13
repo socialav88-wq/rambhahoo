@@ -20,30 +20,35 @@ export default function ProfileHeader({ profile, isOwnProfile = false }) {
 
   return (
     <div className="bg-bg-card rounded-3xl overflow-hidden mb-6 shadow-sm border border-border">
-      {/* Premium Cover Photo with Mesh Gradient */}
-      <div className="h-40 sm:h-56 bg-gradient-to-br from-blue-primary via-purple-secondary to-accent-amber relative overflow-hidden">
-        {/* Abstract overlay patterns */}
-        <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-      </div>
       
-      <div className="px-6 sm:px-10 pb-8 relative">
+      <div className="px-6 sm:px-10 py-10 flex flex-col items-center text-center relative">
         {/* Avatar & Main Actions */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 -mt-16 sm:-mt-20 mb-6">
-          <div className="relative inline-block">
-            <div className="rounded-full p-1.5 bg-bg-card shadow-md relative z-10">
-              <Avatar 
-                src={profile.avatar_url} 
-                name={profile.display_name || profile.username} 
-                size="xl" 
-                className="w-28 h-28 sm:w-36 sm:h-36 border-4 border-bg-elevated object-cover" 
-              />
-            </div>
-            {/* Online Status Indicator */}
-            <div className="absolute bottom-4 right-4 w-5 h-5 bg-accent-green rounded-full border-4 border-bg-card z-20" />
+        <div className="relative inline-block mb-4">
+          <div className="rounded-full p-1.5 bg-bg-card shadow-md relative z-10">
+            <Avatar 
+              src={profile.avatar_url} 
+              name={profile.display_name || profile.username} 
+              size="xl" 
+              className="w-28 h-28 sm:w-36 sm:h-36 border-4 border-bg-elevated object-cover" 
+            />
           </div>
+          {/* Online Status Indicator */}
+          <div className="absolute bottom-4 right-4 w-5 h-5 bg-accent-green rounded-full border-4 border-bg-card z-20" />
+        </div>
+        
+        {/* Profile Info Section */}
+        <div className="mb-6 flex flex-col items-center">
+          <div className="flex items-center gap-3 mb-1 justify-center">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-text-primary tracking-tight">
+              {profile.display_name || profile.username}
+            </h1>
+            <Badge variant="primary" className="text-[10px] font-bold tracking-wider uppercase">
+              {profile.city || profile.locality || 'User'}
+            </Badge>
+          </div>
+          <p className="text-text-dim font-medium text-sm sm:text-base mb-4">@{profile.username}</p>
           
-          <div className="flex gap-3 mt-2 sm:mt-0">
+          <div className="flex gap-3 justify-center mb-6">
             {isOwnProfile ? (
               <Button variant="outline" className="gap-2 rounded-full px-6 font-semibold shadow-sm hover:shadow" onClick={handleLogout}>
                 <Settings size={18} />
@@ -61,28 +66,15 @@ export default function ProfileHeader({ profile, isOwnProfile = false }) {
               </>
             )}
           </div>
-        </div>
-        
-        {/* Profile Info Section */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-text-primary tracking-tight">
-              {profile.display_name || profile.username}
-            </h1>
-            <Badge variant="primary" className="text-[10px] font-bold tracking-wider uppercase">
-              {profile.city || profile.locality || 'User'}
-            </Badge>
-          </div>
-          <p className="text-text-dim font-medium text-sm sm:text-base">@{profile.username}</p>
           
           {profile.bio && (
-            <p className="mt-4 text-base text-text-muted whitespace-pre-wrap max-w-3xl leading-relaxed">
+            <p className="mt-2 text-base text-text-muted whitespace-pre-wrap max-w-2xl leading-relaxed">
               {profile.bio}
             </p>
           )}
           
           {/* Metadata */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-6 text-sm text-text-muted font-medium">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 mt-6 text-sm text-text-muted font-medium">
             {profile.location && (
               <div className="flex items-center gap-1.5 hover:text-text-primary transition-colors cursor-default">
                 <MapPin size={16} className="text-text-dim" />
@@ -105,7 +97,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }) {
         </div>
         
         {/* Premium Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-border-light">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full pt-6 border-t border-border-light">
           <div className="bg-bg-elevated/50 rounded-2xl p-4 text-center hover:bg-bg-elevated transition-colors cursor-pointer">
             <span className="block font-black text-2xl text-text-primary mb-1">{profile.posts_count || 0}</span>
             <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Posts</span>

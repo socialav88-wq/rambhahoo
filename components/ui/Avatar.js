@@ -14,23 +14,17 @@ const SIZES = {
 export default function Avatar({ src, name, size = 'md', className = '' }) {
   const sizeClass = SIZES[size] || SIZES.md;
   
-  if (src) {
-    return (
-      <div className={`relative ${sizeClass} rounded-full overflow-hidden ring-2 ring-border-light shadow-sm shrink-0 ${className}`}>
-        <Image
-          src={src}
-          alt={name || 'Avatar'}
-          fill
-          sizes="(max-width: 768px) 10vw, 5vw"
-          className="object-cover"
-        />
-      </div>
-    );
-  }
+  const seed = encodeURIComponent(name || 'user');
+  const avatarUrl = src || `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}&backgroundColor=e2e8f0,b6e3f4,c0aede,d1d4f9,ffdfbf&backgroundType=gradientLinear`;
   
   return (
-    <div className={`${sizeClass} rounded-full bg-gradient-to-br from-blue-primary to-purple-secondary flex items-center justify-center font-semibold text-white ring-2 ring-white shadow-sm ${className}`}>
-      {getInitials(name)}
+    <div className={`relative ${sizeClass} rounded-full overflow-hidden ring-2 ring-border-light shadow-sm shrink-0 ${className}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={avatarUrl}
+        alt={name || 'Avatar'}
+        className="w-full h-full object-cover"
+      />
     </div>
   );
 }
