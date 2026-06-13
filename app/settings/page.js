@@ -45,6 +45,13 @@ export default function SettingsPage() {
     }
   };
 
+  const generateAvatar = async () => {
+    const seed = Math.random().toString(36).substring(7);
+    const url = `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf,ffd5dc`;
+    setAvatarPreview(url);
+    setAvatarFile(null); // Clear file upload
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -54,6 +61,8 @@ export default function SettingsPage() {
     formData.append('bio', bio);
     if (avatarFile) {
       formData.append('avatar', avatarFile);
+    } else if (avatarPreview.includes('dicebear.com')) {
+      formData.append('avatarUrl', avatarPreview);
     }
     
     const result = await updateProfile(formData);
@@ -106,11 +115,17 @@ export default function SettingsPage() {
             <div className="text-center sm:text-left">
               <h3 className="font-medium text-text-primary mb-1">Profile Picture</h3>
               <p className="text-sm text-text-dim mb-3">JPG, GIF or PNG. 2MB max.</p>
-              <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-bg-elevated hover:bg-border border border-border rounded-lg text-sm font-medium cursor-pointer transition-colors">
-                <ImageIcon size={16} />
-                Upload New Image
-                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-              </label>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <label className="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-bg-elevated hover:bg-border border border-border rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                  <ImageIcon size={16} />
+                  Upload Image
+                  <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                </label>
+                <button type="button" onClick={generateAvatar} className="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-blue-primary/10 hover:bg-blue-primary/20 text-blue-primary border border-blue-primary/20 rounded-lg text-sm font-medium cursor-pointer transition-colors">
+                  <User size={16} />
+                  Generate Avatar
+                </button>
+              </div>
             </div>
           </div>
 

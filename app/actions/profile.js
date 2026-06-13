@@ -15,14 +15,15 @@ export async function updateProfile(formData) {
   const bio = formData.get('bio');
   const username = formData.get('username');
   const avatarFile = formData.get('avatar');
+  const avatarUrlString = formData.get('avatarUrl');
 
-  let avatarUrl = undefined;
+  let avatarUrl = avatarUrlString || undefined;
 
   // Handle avatar upload if exists
   if (avatarFile && avatarFile.size > 0) {
     const fileExt = avatarFile.name.split('.').pop();
     const fileName = `${user.id}-${Math.random()}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
+    const filePath = `${user.id}/avatars/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('RAMBHAHOO')

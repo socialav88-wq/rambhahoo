@@ -83,20 +83,20 @@ export default function PollCard({ post }) {
       {/* Footer */}
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
         <ReactionBar reactions={reactions_summary} compact size="sm" />
-        <div className="flex items-center gap-3">
-          <Link href={`/post/${slug}`} className="flex items-center gap-1 text-text-dim hover:text-blue-primary transition-colors">
-            <MessageSquare size={14} />
+        <div className="flex items-center gap-1">
+          <Link href={`/post/${slug}`} className="flex items-center gap-1.5 p-2 text-text-dim hover:bg-bg-elevated hover:text-blue-primary rounded-full transition-all active:scale-95">
+            <MessageSquare size={18} />
             <span className="text-xs font-medium">{formatNumber(comment_count)}</span>
           </Link>
           <button 
             onClick={(e) => { e.preventDefault(); toggleSave(id); }}
             aria-label="Save post"
-            className={`transition-colors ${isSaved(id) ? 'text-accent-amber' : 'text-text-dim hover:text-accent-amber'}`}
+            className={`p-2 rounded-full transition-all active:scale-95 hover:bg-bg-elevated ${isSaved(id) ? 'text-accent-amber' : 'text-text-dim hover:text-accent-amber'}`}
           >
-            <Bookmark size={14} fill={isSaved(id) ? 'currentColor' : 'none'} />
+            <Bookmark size={18} fill={isSaved(id) ? 'currentColor' : 'none'} />
           </button>
-          <button aria-label="Share post" className="text-text-dim hover:text-accent-green transition-colors">
-            <Share2 size={14} />
+          <button aria-label="Share post" className="p-2 rounded-full text-text-dim hover:bg-bg-elevated hover:text-accent-green transition-all active:scale-95">
+            <Share2 size={18} />
           </button>
         </div>
       </div>

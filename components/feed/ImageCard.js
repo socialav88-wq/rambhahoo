@@ -25,18 +25,18 @@ export default function ImageCard({ post }) {
       {/* Image */}
       <Link href={`/post/${slug}`} className="block relative">
         {image_url ? (
-          <div className="relative w-full aspect-[4/5] bg-bg-elevated">
+          <div className="relative w-full h-[400px] sm:h-[500px] md:h-[600px] bg-bg-elevated/50 backdrop-blur-sm overflow-hidden flex items-center justify-center border-b border-border/50">
             <Image
               src={image_url}
               alt={title}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              className="object-cover"
+              className="object-contain"
               priority={false}
             />
           </div>
         ) : (
-          <div className="w-full aspect-[4/5] bg-bg-elevated flex items-center justify-center">
+          <div className="w-full h-[400px] bg-bg-elevated flex items-center justify-center">
             <ImageIcon size={48} className="text-text-dim" />
           </div>
         )}
@@ -88,19 +88,21 @@ export default function ImageCard({ post }) {
         {/* Footer */}
         <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/50">
           <ReactionBar reactions={reactions_summary} compact size="sm" />
-          <div className="flex items-center gap-3">
-            <Link href={`/post/${slug}`} className="flex items-center gap-1 text-text-dim hover:text-blue-primary transition-colors">
-              <MessageSquare size={14} />
-              <span className="text-xs">{formatNumber(comment_count)}</span>
+          <div className="flex items-center gap-1">
+            <Link href={`/post/${slug}`} className="flex items-center gap-1.5 p-2 text-text-dim hover:bg-bg-elevated hover:text-blue-primary rounded-full transition-all active:scale-95">
+              <MessageSquare size={18} />
+              <span className="text-xs font-medium">{formatNumber(comment_count)}</span>
             </Link>
             <button 
               onClick={(e) => { e.preventDefault(); toggleSave(id); }}
               aria-label="Save post"
-              className={`transition-colors ${isSaved(id) ? 'text-accent-amber' : 'text-text-dim hover:text-accent-amber'}`}
+              className={`p-2 rounded-full transition-all active:scale-95 hover:bg-bg-elevated ${isSaved(id) ? 'text-accent-amber' : 'text-text-dim hover:text-accent-amber'}`}
             >
-              <Bookmark size={14} fill={isSaved(id) ? 'currentColor' : 'none'} />
+              <Bookmark size={18} fill={isSaved(id) ? 'currentColor' : 'none'} />
             </button>
-            <button aria-label="Share post" className="text-text-dim hover:text-accent-green transition-colors"><Share2 size={14} /></button>
+            <button aria-label="Share post" className="p-2 rounded-full text-text-dim hover:bg-bg-elevated hover:text-accent-green transition-all active:scale-95">
+              <Share2 size={18} />
+            </button>
           </div>
         </div>
       </div>

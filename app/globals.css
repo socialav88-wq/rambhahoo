@@ -71,6 +71,7 @@
 * {
   scrollbar-width: thin;
   scrollbar-color: #CBD5E1 #F8FAFC;
+  -webkit-tap-highlight-color: transparent;
 }
 
 *::-webkit-scrollbar { width: 6px; }
@@ -78,7 +79,10 @@
 *::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
 *::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 
-html { scroll-behavior: smooth; }
+html { 
+  scroll-behavior: smooth; 
+  touch-action: manipulation;
+}
 
 body {
   background: #F8FAFC;
