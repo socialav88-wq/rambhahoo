@@ -126,10 +126,8 @@ function LoginFormInner() {
 }
 
 export default function LoginForm() {
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-  if (!clientId) {
-    return <div>Missing Google Client ID</div>;
-  }
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "1062049930567-jafpc7pgqhpvtssbe295sm1m2ncho03p.apps.googleusercontent.com";
+  
   return (
     <GoogleOAuthProvider clientId={clientId}>
       <LoginFormInner />
