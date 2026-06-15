@@ -130,3 +130,9 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@media all and (display-mode: standalone) {
+  .hide-in-pwa {
+    display: none !important;
+  }
+}

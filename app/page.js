@@ -14,7 +14,7 @@ export default async function Home() {
 
   return (
     <div className="animate-fade-in">
-      <div className="mb-6 border-b border-border pb-4">
+      <div className="mb-6 border-b border-border pb-4 hide-in-pwa">
         <h1 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-poppins)] text-text-primary tracking-tight">
           Welcome to Rambhahoo
         </h1>
