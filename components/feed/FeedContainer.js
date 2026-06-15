@@ -93,11 +93,16 @@ export default function FeedContainer({ initialFilter = 'new', localitySlug = nu
           {allPosts.map((post, index) => (
             <PostCard key={post.id} post={post} priority={index === 0} />
           ))}
-          
-          <div className="py-6 flex justify-center">
-            <Button variant="outline" className="w-full sm:w-auto">
-              Load More
-            </Button>
+          <div className="py-10 flex flex-col items-center justify-center text-center opacity-90">
+            <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mb-3 shadow-sm border border-indigo-100">
+              <Flame size={20} className="text-[#4F46E5]" />
+            </div>
+            <h4 className="text-[#4F46E5] font-bold text-lg font-[family-name:var(--font-poppins)] tracking-wide">
+              That's it Boss!
+            </h4>
+            <p className="text-gray-500 text-sm mt-1 font-medium">
+              You've caught up on all the local discussions.
+            </p>
           </div>
         </div>
       )}
