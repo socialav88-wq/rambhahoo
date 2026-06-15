@@ -1,15 +1,16 @@
 import Link from 'next/link';
-import { TrendingUp, MessageSquare, Flame } from 'lucide-react';
+import { TrendingUp, MessageSquare, Flame, MapPin } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
-import { fetchTrendingTags, fetchHotDiscussions, fetchActivePolls } from '@/app/actions/posts';
+import { fetchTrendingTags, fetchHotDiscussions, fetchActivePolls, fetchActiveLocalities } from '@/app/actions/posts';
 import { fetchTopUsers } from '@/app/actions/profile';
 
 export default async function ExploreWidgets() {
-  const [trendingTags, hotDiscussions, activePolls, topUsers] = await Promise.all([
+  const [trendingTags, hotDiscussions, activePolls, topUsers, activeLocalities] = await Promise.all([
     fetchTrendingTags(),
     fetchHotDiscussions(),
     fetchActivePolls(),
-    fetchTopUsers()
+    fetchTopUsers(),
+    fetchActiveLocalities()
   ]);
 
   return (
@@ -120,6 +121,31 @@ export default async function ExploreWidgets() {
                   <p className="text-sm font-medium text-text-primary truncate">{u.display_name || u.username}</p>
                   <p className="text-xs text-text-muted truncate">@{u.username}</p>
                 </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Active Localities */}
+      {activeLocalities && activeLocalities.length > 0 && (
+        <div className="bg-bg-card rounded-xl border border-border shadow-sm p-4 animate-fade-in h-full">
+          <div className="flex items-center gap-2 mb-4">
+            <MapPin size={16} className="text-blue-primary" />
+            <h3 className="font-semibold text-sm text-text-primary font-[family-name:var(--font-poppins)]">Active Localities</h3>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {activeLocalities.map((locality) => (
+              <Link 
+                key={locality.slug} 
+                href={`/${locality.slug}`}
+                className="flex flex-col items-center justify-center p-3 rounded-lg border border-border hover:border-blue-primary/50 hover:bg-bg-elevated hover:shadow-sm transition-all text-center group"
+              >
+                <span className="text-2xl mb-1.5 group-hover:scale-110 transition-transform">
+                  {locality.emoji}
+                </span>
+                <h4 className="text-xs font-medium text-text-primary">
+                  {locality.name}
+                </h4>
               </Link>
             ))}
           </div>

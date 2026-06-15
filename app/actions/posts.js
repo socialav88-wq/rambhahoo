@@ -2,6 +2,7 @@
 
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { LOCALITIES } from '@/lib/constants';
 
 // ─── Server-side timer util ──────────────────────────────────────────────────
 function ts(label) {
@@ -448,6 +449,34 @@ export async function fetchTrendingTags() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
     .map(([tag, count], i) => ({ tag, count: Math.round(count), trend: i < 3 ? 'up' : 'stable', label: 'Trending' }));
+}
+
+export async function fetchActiveLocalities() {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('posts')
+    .select('locality_id, reaction_count, comment_count, localities:locality_id (name, slug, emoji)')
+    .not('locality_id', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error || !data || data.length === 0) return [];
+
+  const locCounts = {};
+  const locMap = {};
+  data.forEach(post => {
+    if (!post.localities) return;
+    const locId = post.locality_id;
+    const w = 1 + (post.reaction_count || 0) + (post.comment_count || 0) * 2;
+    locCounts[locId] = (locCounts[locId] || 0) + w;
+    if (!locMap[locId]) locMap[locId] = Array.isArray(post.localities) ? post.localities[0] : post.localities;
+  });
+
+  return Object.entries(locCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([locId, count]) => locMap[locId]);
 }
 
 export async function fetchActivePolls() {

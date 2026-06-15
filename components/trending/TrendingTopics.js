@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { TrendingUp, MapPin } from 'lucide-react';
-import { LOCALITIES } from '@/lib/constants';
 import { fetchTrendingTags } from '@/app/actions/posts';
 
 export default async function TrendingTopics() {
@@ -44,33 +43,6 @@ export default async function TrendingTopics() {
           </div>
         </div>
       )}
-
-      {/* Trending Localities */}
-      <div className="bg-bg-card rounded-2xl border border-border p-5 sm:p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-6">
-          <MapPin size={24} className="text-blue-primary" />
-          <h2 className="text-xl font-bold text-text-primary font-[family-name:var(--font-poppins)]">
-            Active Localities
-          </h2>
-        </div>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {LOCALITIES.slice(0, 8).map((locality) => (
-            <Link 
-              key={locality.slug} 
-              href={`/${locality.slug}`}
-              className="flex flex-col items-center justify-center p-4 rounded-xl border border-border hover:border-blue-primary/50 hover:bg-bg-elevated hover:shadow-sm transition-all text-center group"
-            >
-              <span className="text-3xl mb-2 group-hover:scale-110 transition-transform">
-                {locality.emoji}
-              </span>
-              <h3 className="text-sm font-medium text-text-primary">
-                {locality.name}
-              </h3>
-            </Link>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
