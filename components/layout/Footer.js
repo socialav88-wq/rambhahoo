@@ -4,7 +4,7 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-bg-primary border-t border-border mt-auto w-full pt-10 pb-6 px-4 md:px-8 z-10 relative">
+    <footer className="bg-bg-primary border-t border-border mt-auto w-full pt-10 pb-6 px-4 md:px-8 z-10 relative hide-in-pwa">
       <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
         <div className="col-span-1 sm:col-span-2 md:col-span-1">
           <h2 className="text-xl font-bold font-[family-name:var(--font-poppins)] text-text-primary mb-4">Rambhahoo</h2>
