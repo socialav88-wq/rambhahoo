@@ -1,5 +1,6 @@
 import SearchBar from '@/components/trending/SearchBar';
 import SearchTabs from '@/components/search/SearchTabs';
+import ExploreWidgets from '@/components/trending/ExploreWidgets';
 import { generateMetadata } from '@/lib/seo';
 import { searchPosts } from '@/app/actions/posts';
 
@@ -39,8 +40,13 @@ export default async function SearchPage({ searchParams }) {
           <SearchTabs results={results} query={query} />
         </div>
       ) : (
-        <div className="mt-12 text-center text-text-muted">
-          <p>Search for localities, tags, or topics to see what's happening.</p>
+        <div className="mt-8">
+          <h2 className="text-xl font-bold font-[family-name:var(--font-poppins)] text-text-primary mb-4 px-1">
+            Explore
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <ExploreWidgets />
+          </div>
         </div>
       )}
     </div>
