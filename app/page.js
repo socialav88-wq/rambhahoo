@@ -16,10 +16,10 @@ export default async function Home() {
     <div className="animate-fade-in">
       <div className="mb-6 border-b border-border pb-4">
         <h1 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-poppins)] text-text-primary tracking-tight">
-          Hyderabad's Hyperlocal Social Network
+          Welcome to Rambhahoo
         </h1>
         <h2 className="text-text-muted text-sm md:text-base mt-1.5 leading-snug">
-          Your neighborhood social network and local community platform for real-time discussions, news, and updates.
+          Your neighborhood social network for real-time discussions, news, and local updates.
         </h2>
       </div>
       <FeedContainer initialPosts={initialPosts} />
