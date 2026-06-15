@@ -509,21 +509,26 @@ export async function deletePost(postId) {
     }
 
     // 3. Manually cascade delete to prevent foreign key constraint errors
-    // Delete interactions
-    await supabase.from('post_interactions').delete().eq('post_id', postId);
     
-    // Delete poll options (poll_votes should cascade, but we'll try to delete options)
+    // Delete reactions (likes) and saved posts
+    await supabase.from('reactions').delete().eq('post_id', postId);
+    await supabase.from('saved_posts').delete().eq('post_id', postId);
+    await supabase.from('reports').delete().eq('post_id', postId);
+    await supabase.from('notifications').delete().eq('reference_id', postId);
+    
+    // Delete poll options & votes
+    await supabase.from('poll_votes').delete().eq('post_id', postId);
     await supabase.from('poll_options').delete().eq('post_id', postId);
     
-    // Delete events
+    // Delete events & rsvps
+    await supabase.from('event_rsvps').delete().eq('post_id', postId);
     await supabase.from('events').delete().eq('post_id', postId);
 
-    // Delete comments (and their interactions)
+    // Delete comments (and their reactions)
     const { data: comments } = await supabase.from('comments').select('id').eq('post_id', postId);
     if (comments && comments.length > 0) {
       const commentIds = comments.map(c => c.id);
-      // Suppress errors if comment_interactions doesn't exist
-      await supabase.from('comment_interactions').delete().in('comment_id', commentIds).catch(() => {});
+      await supabase.from('reactions').delete().in('comment_id', commentIds);
       await supabase.from('comments').delete().eq('post_id', postId);
     }
 
