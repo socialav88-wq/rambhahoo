@@ -488,17 +488,58 @@ export async function deletePost(postId) {
   if (!user) return { error: 'Not authenticated' };
 
   try {
-    const { error } = await supabase
+    // 1. Fetch post to verify ownership and check for image
+    const { data: post, error: fetchError } = await supabase
+      .from('posts')
+      .select('post_type, image_url, user_id')
+      .eq('id', postId)
+      .single();
+
+    if (fetchError || !post) return { error: 'Post not found' };
+    if (post.user_id !== user.id) return { error: 'Unauthorized to delete this post' };
+
+    // 2. Cleanup Storage if image post
+    if (post.post_type === 'image' && post.image_url) {
+      try {
+        const urlParts = post.image_url.split('/post-images/');
+        if (urlParts.length === 2) {
+          await supabase.storage.from('post-images').remove([urlParts[1]]);
+        }
+      } catch (e) { console.error('Storage cleanup failed', e); }
+    }
+
+    // 3. Manually cascade delete to prevent foreign key constraint errors
+    // Delete interactions
+    await supabase.from('post_interactions').delete().eq('post_id', postId);
+    
+    // Delete poll options (poll_votes should cascade, but we'll try to delete options)
+    await supabase.from('poll_options').delete().eq('post_id', postId);
+    
+    // Delete events
+    await supabase.from('events').delete().eq('post_id', postId);
+
+    // Delete comments (and their interactions)
+    const { data: comments } = await supabase.from('comments').select('id').eq('post_id', postId);
+    if (comments && comments.length > 0) {
+      const commentIds = comments.map(c => c.id);
+      // Suppress errors if comment_interactions doesn't exist
+      await supabase.from('comment_interactions').delete().in('comment_id', commentIds).catch(() => {});
+      await supabase.from('comments').delete().eq('post_id', postId);
+    }
+
+    // 4. Finally, delete the post itself
+    const { error: deleteError } = await supabase
       .from('posts')
       .delete()
       .eq('id', postId)
       .eq('user_id', user.id);
     
-    if (error) return { error: error.message };
+    if (deleteError) return { error: deleteError.message };
     
     revalidatePath('/');
     return { success: true };
   } catch (err) {
-    return { error: 'Failed to delete post' };
+    console.error('Delete post error:', err);
+    return { error: 'Failed to delete post cleanly' };
   }
 }
