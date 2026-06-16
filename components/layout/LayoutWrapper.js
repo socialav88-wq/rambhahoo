@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import AppAuthGuard from '@/components/auth/AppAuthGuard';
 
 export default function LayoutWrapper({ children, mainLayout }) {
   const pathname = usePathname();
@@ -9,8 +10,18 @@ export default function LayoutWrapper({ children, mainLayout }) {
   const isPublicRoute = pathname?.startsWith('/login') || pathname?.startsWith('/signup');
 
   if (isPublicRoute) {
-    return <>{children}</>;
+    return (
+      <>
+        <AppAuthGuard />
+        {children}
+      </>
+    );
   }
 
-  return <>{mainLayout}</>;
+  return (
+    <>
+      <AppAuthGuard />
+      {mainLayout}
+    </>
+  );
 }

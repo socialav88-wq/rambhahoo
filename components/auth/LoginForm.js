@@ -121,6 +121,12 @@ function LoginFormInner() {
           Sign up
         </Link>
       </div>
+
+      <div className="mt-6 text-center hide-in-pwa">
+        <Link href="/" className="text-sm font-medium text-text-muted hover:text-text-primary hover:underline transition-colors">
+          Explore without login &rarr;
+        </Link>
+      </div>
     </div>
   );
 }

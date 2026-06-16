@@ -216,6 +216,22 @@ export default function SettingsPage() {
             </Button>
           </div>
         </form>
+
+        {/* Log Out Section */}
+        <div className="mt-8 pt-6 border-t border-border">
+          <h3 className="text-lg font-semibold text-text-primary mb-4 font-[family-name:var(--font-poppins)]">Account Actions</h3>
+          <Button 
+            variant="outline" 
+            className="w-full sm:w-auto text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
+            onClick={async () => {
+              const { logout } = await import('@/app/actions/auth');
+              await logout();
+              router.push('/login');
+            }}
+          >
+            Log Out
+          </Button>
+        </div>
       </div>
     </div>
   );
