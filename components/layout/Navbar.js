@@ -115,6 +115,15 @@ export default function Navbar() {
           </div>
         </div>
 
+        <div className="fixed bottom-14 left-2 z-50 p-2.5 bg-black/85 text-white rounded-xl text-[10px] max-w-[280px] font-mono shadow-xl border border-white/10 pointer-events-none leading-relaxed">
+          <div><strong>AUTH DEBUG:</strong></div>
+          <div>User ID: {user ? user.id.substring(0, 8) + '...' : 'none'}</div>
+          <div>Email: {user ? user.email : 'none'}</div>
+          <div>Profile: {profile ? `${profile.username} (${profile.display_name})` : 'none'}</div>
+          <div>Avatar URL: {profile?.avatar_url ? (profile.avatar_url.substring(0, 35) + '...') : 'none'}</div>
+          <div>IsLoading: {isLoading ? 'true' : 'false'}</div>
+        </div>
+
         {/* Mobile search - expandable */}
         {searchOpen && (
           <form onSubmit={handleSearch} className="pb-3 md:hidden animate-slide-up">
