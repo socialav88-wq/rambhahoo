@@ -34,7 +34,7 @@ async function getOrCreateProfile(supabase, user, mounted = true) {
     const metadata = user.user_metadata || user.raw_user_meta_data || {};
     const defaultUsername = metadata.username || `user_${user.id.substring(0, 8)}`;
     const defaultDisplayName = metadata.display_name || metadata.full_name || 'Rambhahoo User';
-    const defaultAvatarUrl = metadata.avatar_url || '';
+    const defaultAvatarUrl = metadata.avatar_url || metadata.picture || '';
 
     const { data: newProfile, error: insertError } = await supabase
       .from('profiles')
