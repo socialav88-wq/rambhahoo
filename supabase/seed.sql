@@ -1,5 +1,5 @@
 -- ============================================
--- RAMBHAHOO LOCALITIES SEED DATA
+-- tapri-images LOCALITIES SEED DATA
 -- ============================================
 
 -- Ensure the localities table is populated with the foundational Hyderabad areas

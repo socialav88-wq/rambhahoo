@@ -16,13 +16,40 @@ export default function ProfileHeader({ profile, isOwnProfile = false }) {
   const router = useRouter();
   const { user } = useAuthStore();
   const { toggleFollow, isFollowingUser } = useFollowing();
-  const [followersCount, setFollowersCount] = useState(profile?.followers_count || 0);
   
+  const [initialFollowState, setInitialFollowState] = useState({
+    profileId: profile?.id,
+    initiallyFollowing: profile ? isFollowingUser(profile.id) : false
+  });
+
+  if (profile && initialFollowState.profileId !== profile.id) {
+    setInitialFollowState({
+      profileId: profile.id,
+      initiallyFollowing: isFollowingUser(profile.id)
+    });
+  }
+
   if (!profile) return null;
   
+  const isOwn = isOwnProfile || (user?.id === profile?.id);
   const inCircle = isFollowingUser(profile.id);
+  const wasFollowing = initialFollowState.profileId === profile.id ? initialFollowState.initiallyFollowing : false;
+
+  let followersCount = profile.followers_count || 0;
+  if (inCircle && !wasFollowing) {
+    followersCount += 1;
+  } else if (!inCircle && wasFollowing) {
+    followersCount = Math.max(0, followersCount - 1);
+  }
 
   const handleLogout = async () => {
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('Client signout error:', e);
+    }
     await logout();
     router.push('/login');
   };
@@ -32,7 +59,6 @@ export default function ProfileHeader({ profile, isOwnProfile = false }) {
       router.push('/login');
       return;
     }
-    setFollowersCount(prev => inCircle ? prev - 1 : prev + 1);
     await toggleFollow(profile.id, profile.display_name || profile.username);
   };
 
@@ -66,7 +92,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }) {
           <p className="text-text-dim font-medium text-sm sm:text-base mb-4">@{profile.username}</p>
           
           <div className="flex gap-3 justify-center mb-6">
-            {isOwnProfile ? (
+            {isOwn ? (
               <>
                 <Link href="/settings">
                   <Button variant="outline" className="gap-2 rounded-full px-6 font-semibold shadow-sm hover:shadow text-text-primary">

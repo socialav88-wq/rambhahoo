@@ -3,6 +3,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import LayoutWrapper from "@/components/layout/LayoutWrapper";
 import AuthProvider from "@/components/providers/AuthProvider";
 import RealtimeProvider from "@/components/providers/RealtimeProvider";
+import PushNotificationProvider from "@/components/providers/PushNotificationProvider";
 import { Toaster } from "react-hot-toast";
 import { generateMetadata } from "@/lib/seo";
 import "./globals.css";
@@ -53,44 +54,46 @@ export default function RootLayout({ children }) {
           }} 
         />
         <AuthProvider>
-          <RealtimeProvider>
-            <script
-              type="application/ld+json"
-              dangerouslySetInnerHTML={{
-                __html: JSON.stringify([
-                  {
-                    '@context': 'https://schema.org',
-                    '@type': 'WebSite',
-                    name: 'Rambhahoo',
-                    description: 'Hyderabad\'s hyperlocal social network',
-                    url: 'https://www.rambhahoo.com',
-                    potentialAction: {
-                      '@type': 'SearchAction',
-                      target: 'https://www.rambhahoo.com/search?q={search_term_string}',
-                      'query-input': 'required name=search_term_string',
+          <PushNotificationProvider>
+            <RealtimeProvider>
+              <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                  __html: JSON.stringify([
+                    {
+                      '@context': 'https://schema.org',
+                      '@type': 'WebSite',
+                      name: 'Rambhahoo',
+                      description: 'Hyderabad\'s hyperlocal social network',
+                      url: 'https://www.rambhahoo.com',
+                      potentialAction: {
+                        '@type': 'SearchAction',
+                        target: 'https://www.rambhahoo.com/search?q={search_term_string}',
+                        'query-input': 'required name=search_term_string',
+                      },
                     },
-                  },
-                  {
-                    '@context': 'https://schema.org',
-                    '@type': 'Organization',
-                    name: 'Rambhahoo',
-                    url: 'https://www.rambhahoo.com',
-                    logo: 'https://www.rambhahoo.com/icon-192x192.png',
-                    sameAs: [
-                      'https://twitter.com/rambhahoo',
-                      'https://instagram.com/rambhahoo',
-                      'https://youtube.com/rambhahoo',
-                      'https://linkedin.com/company/rambhahoo',
-                      'https://facebook.com/rambhahoo'
-                    ]
-                  }
-                ])
-              }}
-            />
-            <LayoutWrapper mainLayout={<MainLayout>{children}</MainLayout>}>
-              {children}
-            </LayoutWrapper>
-          </RealtimeProvider>
+                    {
+                      '@context': 'https://schema.org',
+                      '@type': 'Organization',
+                      name: 'Rambhahoo',
+                      url: 'https://www.rambhahoo.com',
+                      logo: 'https://www.rambhahoo.com/icon-192x192.png',
+                      sameAs: [
+                        'https://twitter.com/rambhahoo',
+                        'https://instagram.com/rambhahoo',
+                        'https://youtube.com/rambhahoo',
+                        'https://linkedin.com/company/rambhahoo',
+                        'https://facebook.com/rambhahoo'
+                      ]
+                    }
+                  ])
+                }}
+              />
+              <LayoutWrapper mainLayout={<MainLayout>{children}</MainLayout>}>
+                {children}
+              </LayoutWrapper>
+            </RealtimeProvider>
+          </PushNotificationProvider>
         </AuthProvider>
       </body>
     </html>

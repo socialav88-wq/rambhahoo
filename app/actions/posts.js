@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_cache } from 'next/cache';
 import { LOCALITIES } from '@/lib/constants';
 
 // ─── Server-side timer util ──────────────────────────────────────────────────
@@ -21,102 +21,279 @@ function ts(label) {
   };
 }
 
+function checkIsIndexable(title, content) {
+  const text = `${title} ${content}`.toLowerCase();
+  const spamWords = ['qwerty', 'asdf', 'test', 'hello', 'hi', 'sample'];
+  const words = text.split(/\s+/).map(w => w.replace(/[^a-z0-9]/g, '')).filter(Boolean);
+  if (words.length === 0) return false;
+  
+  // If keyboard smash is anywhere
+  const hasBadWord = words.some(w => w === 'asdf' || w === 'qwerty');
+  if (hasBadWord) return false;
+  
+  // If the post has less than 3 words and contains any spam/boilerplate word
+  if (words.length < 3 && words.some(w => spamWords.includes(w))) {
+    return false;
+  }
+  
+  // If all words are spam words
+  const allSpam = words.every(w => spamWords.includes(w));
+  if (allSpam) return false;
+
+  // Single word posts of any kind are not indexable
+  if (words.length < 2) return false;
+  
+  return true;
+}
+
 // ===== FETCH FEEDS =====
-export async function fetchFeeds(filter = 'new', localitySlug = null, lat = null, lng = null, radiusMeters = 5000) {
+export async function fetchFeeds(filter = 'new', localitySlug = null, lat = null, lng = null, radiusMeters = 5000, page = 1, limit = 10, category = null) {
   if (!isSupabaseConfigured()) return [];
 
   const supabase = await createClient();
 
-  let query;
-  
-  if (lat && lng && filter === 'nearby') {
-    // Call RPC for PostGIS distance query
-    query = supabase.rpc('get_nearby_posts', {
-      user_lat: parseFloat(lat),
-      user_lon: parseFloat(lng),
-      radius_meters: radiusMeters
-    });
-  } else {
-    query = supabase
-      .from('posts')
-      .select(`
-        *,
-        profiles:user_id (username, display_name, avatar_url),
-        localities:locality_id (slug, name, emoji),
-        poll_options (id, option_text, vote_count, sort_order),
-        events (event_date, location_name, rsvp_count)
-      `);
+  // Get user and locality in parallel
+  const [userRes, localityRes] = await Promise.all([
+    supabase.auth.getUser(),
+    localitySlug && localitySlug !== 'hyderabad'
+      ? supabase.from('localities').select('id').eq('slug', localitySlug).single()
+      : Promise.resolve({ data: null })
+  ]);
+  const user = userRes.data?.user;
+  const locality = localityRes.data;
 
-    if (localitySlug && localitySlug !== 'hyderabad') {
-      const { data: loc } = await supabase
-        .from('localities')
-        .select('id')
-        .eq('slug', localitySlug)
-        .single();
-      if (loc) query = query.eq('locality_id', loc.id);
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  if (filter === 'hot' || filter === 'trending' || category === 'trending') {
+    let localityId = null;
+    if (locality) {
+      localityId = locality.id;
+    }
+    const { data: rawTrending, error: trendErr } = await supabase
+      .rpc('get_trending_posts_decayed', {
+        p_locality_id: localityId,
+        p_limit: limit,
+        p_offset: from
+      });
+      
+    if (!trendErr && rawTrending && rawTrending.length > 0) {
+      const postIds = rawTrending.map(p => p.id);
+      const [pollOptionsRes, eventsRes, reactionsRes, pollVotesRes, userReactionsRes] = await Promise.all([
+        supabase.from('poll_options').select('*').in('post_id', postIds),
+        supabase.from('events').select('*').in('post_id', postIds),
+        supabase.from('reactions').select('post_id, emoji').in('post_id', postIds),
+        user ? supabase.from('poll_votes').select('post_id, poll_option_id').eq('user_id', user.id).in('post_id', postIds) : Promise.resolve({ data: [] }),
+        user ? supabase.from('reactions').select('post_id, emoji').eq('user_id', user.id).in('post_id', postIds) : Promise.resolve({ data: [] })
+      ]);
+      
+      const pollOptionsMap = {};
+      (pollOptionsRes.data || []).forEach(opt => {
+        if (!pollOptionsMap[opt.post_id]) pollOptionsMap[opt.post_id] = [];
+        pollOptionsMap[opt.post_id].push(opt);
+      });
+      
+      const eventsMap = {};
+      (eventsRes.data || []).forEach(ev => { eventsMap[ev.post_id] = ev; });
+      
+      const reactionsMap = {};
+      (reactionsRes.data || []).forEach(rx => {
+        if (!reactionsMap[rx.post_id]) reactionsMap[rx.post_id] = {};
+        reactionsMap[rx.post_id][rx.emoji] = (reactionsMap[rx.post_id][rx.emoji] || 0) + 1;
+      });
+      
+      const userVotesMap = {};
+      (pollVotesRes.data || []).forEach(v => { userVotesMap[v.post_id] = v.poll_option_id; });
+      
+      const userReactionsMap = {};
+      (userReactionsRes.data || []).forEach(r => {
+        if (!userReactionsMap[r.post_id]) userReactionsMap[r.post_id] = [];
+        userReactionsMap[r.post_id].push(r.emoji);
+      });
+      
+      const authorIds = rawTrending.map(p => p.user_id);
+      const localityIds = rawTrending.map(p => p.locality_id).filter(Boolean);
+      
+      const [profilesRes, localitiesRes] = await Promise.all([
+        supabase.from('profiles').select('id, username, display_name, avatar_url').in('id', authorIds),
+        localityIds.length > 0 ? supabase.from('localities').select('id, slug, name, emoji').in('id', localityIds) : Promise.resolve({ data: [] })
+      ]);
+      
+      const profilesMap = {};
+      (profilesRes.data || []).forEach(p => { profilesMap[p.id] = p; });
+      
+      const localitiesMap = {};
+      (localitiesRes.data || []).forEach(l => { localitiesMap[l.id] = l; });
+      
+      return rawTrending.map(post => {
+        const pollOpts = pollOptionsMap[post.id] || [];
+        pollOpts.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+        
+        return {
+          ...post,
+          post_type: post.post_type === 'meme' ? 'image' : post.post_type,
+          profiles: profilesMap[post.user_id] || null,
+          localities: localitiesMap[post.locality_id] || null,
+          poll_options: pollOpts,
+          events: eventsMap[post.id] ? [eventsMap[post.id]] : [],
+          reactions_summary: reactionsMap[post.id] || {},
+          user_voted_option_id: userVotesMap[post.id] || null,
+          user_reactions: userReactionsMap[post.id] || []
+        };
+      });
     }
   }
 
-  switch (filter) {
-    case 'hot':       query = query.order('reaction_count', { ascending: false }); break;
-    case 'top':       query = query.order('view_count',     { ascending: false }); break;
-    case 'discussed': query = query.order('comment_count',  { ascending: false }); break;
-    case 'nearby':    if (!lat || !lng) query = query.order('created_at', { ascending: false }); break; // fallback
-    default:          if (filter !== 'nearby') query = query.order('created_at', { ascending: false });
-  }
+  if (lat && lng && filter === 'nearby') {
+    // 1. Fetch posts from RPC with pagination range
+    const { data: rawNearby, error: nearbyErr } = await supabase
+      .rpc('get_nearby_posts', {
+        user_lat: parseFloat(lat),
+        user_lon: parseFloat(lng),
+        radius_meters: radiusMeters
+      })
+      .range(from, to);
 
-  // Ensure we don't try to limit/order on an RPC if it already handles it, but PostgREST allows chaining on RPCs that return tables.
-  query = query.limit(20);
-  const { data, error } = await query;
-  if (error) { console.error('fetchFeeds:', error.message); return []; }
-  if (!data || data.length === 0) return [];
+    if (nearbyErr || !rawNearby || rawNearby.length === 0) {
+      if (nearbyErr) console.error('get_nearby_posts err:', nearbyErr.message);
+      return [];
+    }
 
-  const postIds = data.map(p => p.id);
-  const { data: reactions } = await supabase
-    .from('reactions')
-    .select('post_id, emoji')
-    .in('post_id', postIds);
+    let filteredNearby = rawNearby || [];
+    if (category) {
+      if (category === 'event') {
+        filteredNearby = filteredNearby.filter(p => p.post_type === 'event');
+      } else if (category === 'trending') {
+        filteredNearby = filteredNearby.filter(p => p.is_trending === true);
+      } else {
+        filteredNearby = filteredNearby.filter(p => p.category === category);
+      }
+    }
 
-  const summaryMap = {};
-  (reactions || []).forEach(r => {
-    if (!summaryMap[r.post_id]) summaryMap[r.post_id] = {};
-    summaryMap[r.post_id][r.emoji] = (summaryMap[r.post_id][r.emoji] || 0) + 1;
-  });
+    const postIds = filteredNearby.map(p => p.id);
+    if (postIds.length === 0) return [];
 
-  let userVotesMap = {};
-  let userReactionsMap = {};
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user && postIds.length > 0) {
-    // Fetch Poll Votes
-    const { data: pollVotes } = await supabase
-      .from('poll_votes')
-      .select('post_id, poll_option_id')
-      .eq('user_id', user.id)
-      .in('post_id', postIds);
-      
-    (pollVotes || []).forEach(v => {
+    // 2. Fetch all relations in parallel
+    const [pollOptionsRes, eventsRes, reactionsRes, pollVotesRes, userReactionsRes] = await Promise.all([
+      supabase.from('poll_options').select('*').in('post_id', postIds),
+      supabase.from('events').select('*').in('post_id', postIds),
+      supabase.from('reactions').select('post_id, emoji').in('post_id', postIds),
+      user ? supabase.from('poll_votes').select('post_id, poll_option_id').eq('user_id', user.id).in('post_id', postIds) : Promise.resolve({ data: [] }),
+      user ? supabase.from('reactions').select('post_id, emoji').eq('user_id', user.id).in('post_id', postIds) : Promise.resolve({ data: [] })
+    ]);
+
+    // Index mappings for O(1) lookups
+    const pollOptionsMap = {};
+    (pollOptionsRes.data || []).forEach(opt => {
+      if (!pollOptionsMap[opt.post_id]) pollOptionsMap[opt.post_id] = [];
+      pollOptionsMap[opt.post_id].push(opt);
+    });
+
+    const eventsMap = {};
+    (eventsRes.data || []).forEach(ev => {
+      eventsMap[ev.post_id] = ev;
+    });
+
+    const reactionsMap = {};
+    (reactionsRes.data || []).forEach(rx => {
+      if (!reactionsMap[rx.post_id]) reactionsMap[rx.post_id] = {};
+      reactionsMap[rx.post_id][rx.emoji] = (reactionsMap[rx.post_id][rx.emoji] || 0) + 1;
+    });
+
+    const userVotesMap = {};
+    (pollVotesRes.data || []).forEach(v => {
       userVotesMap[v.post_id] = v.poll_option_id;
     });
 
-    // Fetch User Reactions
-    const { data: userReactions } = await supabase
-      .from('reactions')
-      .select('post_id, emoji')
-      .eq('user_id', user.id)
-      .in('post_id', postIds);
-
-    (userReactions || []).forEach(r => {
+    const userReactionsMap = {};
+    (userReactionsRes.data || []).forEach(r => {
       if (!userReactionsMap[r.post_id]) userReactionsMap[r.post_id] = [];
       userReactionsMap[r.post_id].push(r.emoji);
     });
-  }
 
-  return data.map(post => ({ 
-    ...post, 
-    reactions_summary: summaryMap[post.id] || {},
-    user_voted_option_id: userVotesMap[post.id] || null,
-    user_reactions: userReactionsMap[post.id] || []
-  }));
+    // 3. Map to match the expected format
+    return filteredNearby.map(post => {
+      const pollOpts = pollOptionsMap[post.id] || [];
+      pollOpts.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+      return {
+        ...post,
+        post_type: post.post_type === 'meme' ? 'image' : post.post_type,
+        profiles: typeof post.profiles === 'string' ? JSON.parse(post.profiles) : post.profiles,
+        localities: typeof post.localities === 'string' ? JSON.parse(post.localities) : post.localities,
+        poll_options: pollOpts,
+        events: eventsMap[post.id] ? [eventsMap[post.id]] : [],
+        reactions_summary: reactionsMap[post.id] || {},
+        user_voted_option_id: userVotesMap[post.id] || null,
+        user_reactions: userReactionsMap[post.id] || []
+      };
+    });
+  } else {
+    // Standard feed query: single nested select strategy
+    const selectStr = `
+      *,
+      profiles:user_id (username, display_name, avatar_url),
+      localities:locality_id (slug, name, emoji),
+      poll_options (id, option_text, vote_count, sort_order),
+      events (event_date, location_name, rsvp_count),
+      reactions (emoji)
+      ${user ? `, user_reactions:reactions(emoji), user_votes:poll_votes(poll_option_id)` : ''}
+    `;
+
+    let query = supabase.from('posts').select(selectStr);
+    if (locality) {
+      query = query.eq('locality_id', locality.id);
+    }
+    if (category) {
+      if (category === 'event') {
+        query = query.eq('post_type', 'event');
+      } else if (category === 'trending') {
+        query = query.eq('is_trending', true);
+      } else {
+        query = query.eq('category', category);
+      }
+    }
+
+    if (user) {
+      query = query
+        .eq('user_reactions.user_id', user.id)
+        .eq('user_votes.user_id', user.id);
+    }
+
+    switch (filter) {
+      case 'hot':       query = query.order('reaction_count', { ascending: false }); break;
+      case 'top':       query = query.order('view_count',     { ascending: false }); break;
+      case 'discussed': query = query.order('comment_count',  { ascending: false }); break;
+      default:          query = query.order('created_at', { ascending: false });
+    }
+
+    query = query.range(from, to);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('fetchFeeds standard:', error.message);
+      return [];
+    }
+    if (!data || data.length === 0) return [];
+
+    return data.map(post => {
+      const summary = {};
+      (post.reactions || []).forEach(r => {
+        summary[r.emoji] = (summary[r.emoji] || 0) + 1;
+      });
+
+      const userVotedOptionId = post.user_votes?.[0]?.poll_option_id || null;
+      const userReactionsArr = (post.user_reactions || []).map(r => r.emoji);
+
+      return {
+        ...post,
+        post_type: post.post_type === 'meme' ? 'image' : post.post_type,
+        reactions_summary: summary,
+        user_voted_option_id: userVotedOptionId,
+        user_reactions: userReactionsArr
+      };
+    });
+  }
 }
 
 // ===== FETCH SINGLE POST =====
@@ -124,53 +301,41 @@ export async function fetchPostBySlug(slug) {
   if (!isSupabaseConfigured()) return null;
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('posts')
-    .select(`
-      *,
-      profiles:user_id (username, display_name, avatar_url),
-      localities:locality_id (slug, name, emoji),
-      poll_options (id, option_text, vote_count, sort_order),
-      events (event_date, location_name, rsvp_count)
-    `)
-    .eq('slug', slug)
-    .single();
-
-  if (error || !data) return null;
-
-  const { data: reactions } = await supabase
-    .from('reactions')
-    .select('emoji')
-    .eq('post_id', data.id);
-
-  const summary = {};
-  (reactions || []).forEach(r => { summary[r.emoji] = (summary[r.emoji] || 0) + 1; });
-
-  let userVotedOptionId = null;
-  let userReactionsArr = [];
   const { data: { user } } = await supabase.auth.getUser();
+
+  const selectStr = `
+    *,
+    profiles:user_id (username, display_name, avatar_url),
+    localities:locality_id (slug, name, emoji),
+    poll_options (id, option_text, vote_count, sort_order),
+    events (event_date, location_name, rsvp_count),
+    reactions (emoji)
+    ${user ? `, user_reactions:reactions(emoji), user_votes:poll_votes(poll_option_id)` : ''}
+  `;
+
+  let query = supabase.from('posts').select(selectStr);
   if (user) {
-    if (data.post_type === 'poll') {
-      const { data: vote } = await supabase
-        .from('poll_votes')
-        .select('poll_option_id')
-        .eq('user_id', user.id)
-        .eq('post_id', data.id)
-        .single();
-      if (vote) userVotedOptionId = vote.poll_option_id;
-    }
-    const { data: userReactions } = await supabase
-      .from('reactions')
-      .select('emoji')
-      .eq('user_id', user.id)
-      .eq('post_id', data.id);
-    
-    if (userReactions) {
-      userReactionsArr = userReactions.map(r => r.emoji);
-    }
+    query = query
+      .eq('user_reactions.user_id', user.id)
+      .eq('user_votes.user_id', user.id);
   }
 
-  return { ...data, reactions_summary: summary, user_voted_option_id: userVotedOptionId, user_reactions: userReactionsArr };
+  const { data, error } = await query.eq('slug', slug).single();
+  if (error || !data) return null;
+
+  const summary = {};
+  (data.reactions || []).forEach(r => { summary[r.emoji] = (summary[r.emoji] || 0) + 1; });
+
+  const userVotedOptionId = data.user_votes?.[0]?.poll_option_id || null;
+  const userReactionsArr = (data.user_reactions || []).map(r => r.emoji);
+
+  return {
+    ...data,
+    post_type: data.post_type === 'meme' ? 'image' : data.post_type,
+    reactions_summary: summary,
+    user_voted_option_id: userVotedOptionId,
+    user_reactions: userReactionsArr
+  };
 }
 
 // ===== CREATE POST =====
@@ -236,6 +401,7 @@ export async function createPost(formData) {
   const location_lng = formData.get('location_lng');
   const event_date   = formData.get('event_date');
   const location_name = formData.get('location_name');
+  const category     = formData.get('category')?.trim() || 'discussion';
 
   console.log('[SERVER:posts] FormData received:', {
     title,
@@ -284,7 +450,7 @@ export async function createPost(formData) {
 
   // ── Step 6: Build insert payload ─────────────────────────────────────────
   const tags = tagsStr
-    ? tagsStr.split(',').map(t => t.trim()).filter(Boolean)
+    ? tagsStr.split(',').map(t => t.trim().toLowerCase()).filter(Boolean)
     : [];
 
   let location = null;
@@ -292,15 +458,23 @@ export async function createPost(formData) {
     location = `POINT(${location_lng} ${location_lat})`; // PostGIS WKT format (Longitude Latitude)
   }
 
+  const dbPostType = post_type === 'image' ? 'meme' : post_type;
+
+  const allowedCategories = ['discussion', 'question', 'recommendation', 'news', 'confession', 'opinion', 'battle', 'meme'];
+  const finalCategory = allowedCategories.includes(category) ? category : 'discussion';
+  const is_indexable = checkIsIndexable(title, content);
+
   const postPayload = {
     user_id:     user.id,
     title,
     content,
-    post_type,
+    post_type:   dbPostType,
     image_url,
     locality_id,
     location,
     tags,
+    category:    finalCategory,
+    is_indexable,
   };
 
   console.log('[SERVER:posts] INSERT payload:', JSON.stringify(postPayload, null, 2));
@@ -382,6 +556,19 @@ export async function createPost(formData) {
   revalidatePath(`/post/${newPost.slug}`);
   tRevalidate.end('/ and /post/[slug]');
 
+  // Parse mentions inside posts
+  try {
+    const { parseMentionsAndNotify } = await import('@/app/actions/pushActions');
+    await parseMentionsAndNotify({
+      content,
+      referenceId: newPost.id,
+      actorId: user.id,
+      isPost: true
+    });
+  } catch (mErr) {
+    console.error('[SERVER:posts] Mentions parsing error:', mErr.message);
+  }
+
   const totalMs = tFlow.end(`slug=${newPost.slug}`);
   console.log(`[SERVER:posts] ══ createPost END — total ${totalMs}ms ══\n`);
 
@@ -401,114 +588,235 @@ export async function fetchComments(postId) {
   return data || [];
 }
 
+// ===== SUGGESTIONS =====
+export async function getSearchSuggestions(query) {
+  if (!isSupabaseConfigured() || !query || query.trim().length < 2) {
+    return { users: [], localities: [], businesses: [], tags: [] };
+  }
+  
+  const supabase = await createClient();
+  const cleanQuery = query.trim();
+  const searchPattern = `%${cleanQuery}%`;
+  const lowerTag = cleanQuery.toLowerCase();
+
+  const [usersRes, localitiesRes, businessesRes, postsTagsRes] = await Promise.all([
+    supabase.from('profiles').select('username, display_name, avatar_url').or(`username.ilike.${searchPattern},display_name.ilike.${searchPattern}`).limit(5),
+    supabase.from('localities').select('name, slug, emoji').or(`name.ilike.${searchPattern},slug.ilike.${searchPattern}`).limit(5),
+    supabase.from('businesses').select('name, slug, category').or(`name.ilike.${searchPattern},description.ilike.${searchPattern}`).limit(5),
+    supabase.from('posts').select('tags').or(`tags.cs.{"${lowerTag}"}`).limit(20)
+  ]);
+
+  const matchedTags = new Set();
+  (postsTagsRes.data || []).forEach(p => {
+    (p.tags || []).forEach(t => {
+      if (t.toLowerCase().includes(lowerTag)) {
+        matchedTags.add(t);
+      }
+    });
+  });
+
+  return {
+    users: usersRes.data || [],
+    localities: localitiesRes.data || [],
+    businesses: businessesRes.data || [],
+    tags: Array.from(matchedTags).slice(0, 5)
+  };
+}
+
 // ===== SEARCH =====
 export async function searchPosts(query) {
-  if (!isSupabaseConfigured()) return { posts: [], users: [], localities: [] };
+  if (!isSupabaseConfigured()) return { posts: [], users: [], localities: [], businesses: [], tags: [] };
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const { data: posts } = await supabase
+  let cleanQuery = (query || '').trim();
+  if (cleanQuery.startsWith('#')) {
+    cleanQuery = cleanQuery.substring(1);
+  }
+  const searchPattern = `%${cleanQuery}%`;
+  const lowerTag = cleanQuery.toLowerCase();
+
+  const selectStr = `
+    *,
+    profiles:user_id (username, display_name, avatar_url),
+    localities:locality_id (slug, name, emoji),
+    poll_options (id, option_text, vote_count, sort_order),
+    events (event_date, location_name, rsvp_count),
+    reactions (emoji)
+    ${user ? `, user_reactions:reactions(emoji), user_votes:poll_votes(poll_option_id)` : ''}
+  `;
+
+  let postsQuery = supabase
     .from('posts')
-    .select('*, profiles:user_id (username, display_name, avatar_url), localities:locality_id (slug, name, emoji)')
-    .or(`title.ilike.%${query}%,content.ilike.%${query}%,tags.cs.{"${query}"}`)
+    .select(selectStr)
+    .or(`title.ilike.${searchPattern},content.ilike.${searchPattern},category.ilike.${searchPattern},tags.cs.{"${lowerTag}"}`)
     .order('created_at', { ascending: false })
     .limit(20);
 
-  const { data: users } = await supabase
-    .from('profiles')
-    .select('id, username, display_name, avatar_url, bio')
-    .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
-    .limit(10);
+  if (user) {
+    postsQuery = postsQuery
+      .eq('user_reactions.user_id', user.id)
+      .eq('user_votes.user_id', user.id);
+  }
 
-  const { data: localities } = await supabase
-    .from('localities')
-    .select('*')
-    .or(`name.ilike.%${query}%,slug.ilike.%${query}%`)
-    .limit(10);
+  const [postsRes, usersRes, localitiesRes, businessesRes, postsTagsRes] = await Promise.all([
+    postsQuery,
+    supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url, bio')
+      .or(`username.ilike.${searchPattern},display_name.ilike.${searchPattern}`)
+      .limit(10),
+    supabase
+      .from('localities')
+      .select('*')
+      .or(`name.ilike.${searchPattern},slug.ilike.${searchPattern}`)
+      .limit(10),
+    supabase
+      .from('businesses')
+      .select('*, localities:locality_id (name, slug, emoji)')
+      .or(`name.ilike.${searchPattern},description.ilike.${searchPattern},category.ilike.${searchPattern},tags.cs.{"${lowerTag}"}`)
+      .limit(10),
+    supabase
+      .from('posts')
+      .select('tags')
+      .or(`tags.cs.{"${lowerTag}"}`)
+      .limit(50)
+  ]);
 
-  return { posts: posts || [], users: users || [], localities: localities || [] };
+  const rawPosts = postsRes.data || [];
+  const mappedPosts = rawPosts.map(post => {
+    const summary = {};
+    (post.reactions || []).forEach(r => { summary[r.emoji] = (summary[r.emoji] || 0) + 1; });
+    const userVotedOptionId = post.user_votes?.[0]?.poll_option_id || null;
+    const userReactionsArr = (post.user_reactions || []).map(r => r.emoji);
+    return {
+      ...post,
+      post_type: post.post_type === 'meme' ? 'image' : post.post_type,
+      reactions_summary: summary,
+      user_voted_option_id: userVotedOptionId,
+      user_reactions: userReactionsArr
+    };
+  });
+
+  const matchedTagsMap = {};
+  (postsTagsRes.data || []).forEach(p => {
+    (p.tags || []).forEach(t => {
+      if (t.toLowerCase().includes(lowerTag)) {
+        matchedTagsMap[t] = (matchedTagsMap[t] || 0) + 1;
+      }
+    });
+  });
+  const sortedTags = Object.entries(matchedTagsMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([tag, count]) => ({ tag, count }));
+
+  return {
+    posts: mappedPosts,
+    users: usersRes.data || [],
+    localities: localitiesRes.data || [],
+    businesses: businessesRes.data || [],
+    tags: sortedTags
+  };
 }
 
 // ===== TRENDING =====
-export async function fetchTrendingTags() {
-  if (!isSupabaseConfigured()) return [];
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('posts')
-    .select('tags, reaction_count, comment_count, view_count')
-    .order('created_at', { ascending: false })
-    .limit(50);
-  if (error || !data) return [];
+export const fetchTrendingTags = unstable_cache(
+  async () => {
+    if (!isSupabaseConfigured()) return [];
+    const supabase = await createClient(false);
+    const { data, error } = await supabase
+      .from('posts')
+      .select('tags, reaction_count, comment_count, view_count')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error || !data) return [];
 
-  const tagCounts = {};
-  data.forEach(post => {
-    const w = 1 + (post.reaction_count || 0) + (post.comment_count || 0) * 2 + (post.view_count || 0) * 0.1;
-    (post.tags || []).forEach(tag => { tagCounts[tag] = (tagCounts[tag] || 0) + w; });
-  });
+    const tagCounts = {};
+    data.forEach(post => {
+      const w = 1 + (post.reaction_count || 0) + (post.comment_count || 0) * 2 + (post.view_count || 0) * 0.1;
+      (post.tags || []).forEach(tag => { tagCounts[tag] = (tagCounts[tag] || 0) + w; });
+    });
 
-  return Object.entries(tagCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-    .map(([tag, count], i) => ({ tag, count: Math.round(count), trend: i < 3 ? 'up' : 'stable', label: 'Trending' }));
-}
+    return Object.entries(tagCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([tag, count], i) => ({ tag, count: Math.round(count), trend: i < 3 ? 'up' : 'stable', label: 'Trending' }));
+  },
+  ['trending-tags'],
+  { revalidate: 120, tags: ['trending-tags'] }
+);
 
-export async function fetchActiveLocalities() {
-  if (!isSupabaseConfigured()) return [];
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('posts')
-    .select('locality_id, reaction_count, comment_count, localities:locality_id (name, slug, emoji)')
-    .not('locality_id', 'is', null)
-    .order('created_at', { ascending: false })
-    .limit(100);
+export const fetchActiveLocalities = unstable_cache(
+  async () => {
+    if (!isSupabaseConfigured()) return [];
+    const supabase = await createClient(false);
+    const { data, error } = await supabase
+      .from('posts')
+      .select('locality_id, reaction_count, comment_count, localities:locality_id (name, slug, emoji)')
+      .not('locality_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(100);
 
-  if (error || !data || data.length === 0) return [];
+    if (error || !data || data.length === 0) return [];
 
-  const locCounts = {};
-  const locMap = {};
-  data.forEach(post => {
-    if (!post.localities) return;
-    const locId = post.locality_id;
-    const w = 1 + (post.reaction_count || 0) + (post.comment_count || 0) * 2;
-    locCounts[locId] = (locCounts[locId] || 0) + w;
-    if (!locMap[locId]) locMap[locId] = Array.isArray(post.localities) ? post.localities[0] : post.localities;
-  });
+    const locCounts = {};
+    const locMap = {};
+    data.forEach(post => {
+      if (!post.localities) return;
+      const locId = post.locality_id;
+      const w = 1 + (post.reaction_count || 0) + (post.comment_count || 0) * 2;
+      locCounts[locId] = (locCounts[locId] || 0) + w;
+      if (!locMap[locId]) locMap[locId] = Array.isArray(post.localities) ? post.localities[0] : post.localities;
+    });
 
-  return Object.entries(locCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-    .map(([locId, count]) => locMap[locId]);
-}
+    return Object.entries(locCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([locId, count]) => locMap[locId]);
+  },
+  ['active-localities'],
+  { revalidate: 300, tags: ['active-localities'] }
+);
 
-export async function fetchActivePolls() {
-  if (!isSupabaseConfigured()) return [];
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('posts')
-    .select('title, slug, reaction_count, comment_count, poll_options (vote_count)')
-    .eq('post_type', 'poll')
-    .order('created_at', { ascending: false })
-    .limit(5);
-  if (error || !data) return [];
+export const fetchActivePolls = unstable_cache(
+  async () => {
+    if (!isSupabaseConfigured()) return [];
+    const supabase = await createClient(false);
+    const { data, error } = await supabase
+      .from('posts')
+      .select('title, slug, reaction_count, comment_count, poll_options (vote_count)')
+      .eq('post_type', 'poll')
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (error || !data) return [];
 
-  return data.map(poll => ({
-    question: poll.title,
-    slug:     poll.slug,
-    votes:    (poll.poll_options || []).reduce((s, o) => s + (o.vote_count || 0), 0),
-  })).sort((a, b) => b.votes - a.votes).slice(0, 3);
-}
+    return data.map(poll => ({
+      question: poll.title,
+      slug:     poll.slug,
+      votes:    (poll.poll_options || []).reduce((s, o) => s + (o.vote_count || 0), 0),
+    })).sort((a, b) => b.votes - a.votes).slice(0, 3);
+  },
+  ['active-polls'],
+  { revalidate: 180, tags: ['active-polls'] }
+);
 
-export async function fetchHotDiscussions() {
-  if (!isSupabaseConfigured()) return [];
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('posts')
-    .select('title, slug, comment_count')
-    .eq('post_type', 'discussion')
-    .order('comment_count', { ascending: false })
-    .limit(4);
-  if (error || !data) return [];
-  return data.map(d => ({ title: d.title, slug: d.slug, comments: d.comment_count }));
-}
+export const fetchHotDiscussions = unstable_cache(
+  async () => {
+    if (!isSupabaseConfigured()) return [];
+    const supabase = await createClient(false);
+    const { data, error } = await supabase
+      .from('posts')
+      .select('title, slug, comment_count')
+      .eq('post_type', 'discussion')
+      .order('comment_count', { ascending: false })
+      .limit(4);
+    if (error || !data) return [];
+    return data.map(d => ({ title: d.title, slug: d.slug, comments: d.comment_count }));
+  },
+  ['hot-discussions'],
+  { revalidate: 180, tags: ['hot-discussions'] }
+);
 
 // ===== DELETE POST =====
 export async function deletePost(postId) {
@@ -528,11 +836,12 @@ export async function deletePost(postId) {
     if (post.user_id !== user.id) return { error: 'Unauthorized to delete this post' };
 
     // 2. Cleanup Storage if image post
-    if (post.post_type === 'image' && post.image_url) {
+    if ((post.post_type === 'image' || post.post_type === 'meme') && post.image_url) {
       try {
-        const urlParts = post.image_url.split('/post-images/');
+        const bucket = post.image_url.includes('/tapri-images/') ? 'tapri-images' : 'RAMBHAHOO';
+        const urlParts = post.image_url.split(`/${bucket}/`);
         if (urlParts.length === 2) {
-          await supabase.storage.from('post-images').remove([urlParts[1]]);
+          await supabase.storage.from(bucket).remove([urlParts[1]]);
         }
       } catch (e) { console.error('Storage cleanup failed', e); }
     }
@@ -576,4 +885,58 @@ export async function deletePost(postId) {
     console.error('Delete post error:', err);
     return { error: 'Failed to delete post cleanly' };
   }
+}
+
+// ===== BUSINESS QUERY ACTIONS =====
+export async function fetchBusinessBySlug(slug) {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('businesses')
+    .select('*, localities:locality_id (name, slug, emoji)')
+    .eq('slug', slug)
+    .single();
+  if (error || !data) return null;
+  return data;
+}
+
+export async function fetchBusinessRelatedPosts(businessName, tags) {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  
+  const tagList = (tags || []).map(t => `"${t.toLowerCase()}"`).join(',');
+  
+  let query = supabase
+    .from('posts')
+    .select(`
+      *,
+      profiles:user_id (username, display_name, avatar_url),
+      localities:locality_id (slug, name, emoji),
+      poll_options (id, option_text, vote_count, sort_order),
+      events (event_date, location_name, rsvp_count),
+      reactions (emoji)
+    `)
+    .order('created_at', { ascending: false })
+    .limit(10);
+     
+  if (tags && tags.length > 0) {
+    query = query.or(`tags.cs.{${tagList}},title.ilike.%${businessName}%,content.ilike.%${businessName}%`);
+  } else {
+    query = query.or(`title.ilike.%${businessName}%,content.ilike.%${businessName}%`);
+  }
+  
+  const { data, error } = await query;
+  if (error || !data) return [];
+  
+  return data.map(post => {
+    const summary = {};
+    (post.reactions || []).forEach(r => { summary[r.emoji] = (summary[r.emoji] || 0) + 1; });
+    return {
+      ...post,
+      post_type: post.post_type === 'meme' ? 'image' : post.post_type,
+      reactions_summary: summary,
+      user_reactions: [],
+      user_voted_option_id: null
+    };
+  });
 }

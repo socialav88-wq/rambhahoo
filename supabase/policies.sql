@@ -1,5 +1,5 @@
 -- ============================================
--- RAMBHAHOO ROW LEVEL SECURITY POLICIES
+-- tapri-images ROW LEVEL SECURITY POLICIES
 -- ============================================
 
 -- Enable RLS on all tables

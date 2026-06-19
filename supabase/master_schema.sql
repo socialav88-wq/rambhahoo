@@ -1,5 +1,5 @@
 -- =================================================================================
--- RAMBHAHOO - MASTER DATABASE SCHEMA (V1)
+-- tapri-images - MASTER DATABASE SCHEMA (V1)
 -- Full initialization script including Tables, PostGIS, RLS, Functions, & Triggers
 -- =================================================================================
 
@@ -166,7 +166,11 @@ CREATE TABLE public.notifications (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   actor_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('like', 'comment', 'mention', 'follow', 'rsvp')),
+  type TEXT NOT NULL CHECK (type IN (
+    'like', 'comment', 'mention', 'follow', 'rsvp',
+    'POST_LIKE', 'POST_REACTION', 'POST_COMMENT', 'COMMENT_REPLY',
+    'POLL_VOTE', 'CIRCLE_ADD', 'MENTION', 'POST_REPORT', 'SYSTEM', 'EVENT_RSVP'
+  )),
   reference_id UUID,
   is_read BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -264,7 +268,7 @@ BEGIN
   END IF;
   RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER trigger_follower_counts AFTER INSERT OR DELETE ON public.followers FOR EACH ROW EXECUTE FUNCTION update_follower_counts();
 
 CREATE OR REPLACE FUNCTION update_post_comment_count() RETURNS TRIGGER AS $$
@@ -278,7 +282,7 @@ BEGIN
   END IF;
   RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER trigger_comment_count AFTER INSERT OR DELETE ON public.comments FOR EACH ROW EXECUTE FUNCTION update_post_comment_count();
 
 CREATE OR REPLACE FUNCTION update_reaction_count() RETURNS TRIGGER AS $$
@@ -299,7 +303,7 @@ BEGIN
   END IF;
   RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER trigger_reaction_count AFTER INSERT OR DELETE ON public.reactions FOR EACH ROW EXECUTE FUNCTION update_reaction_count();
 
 CREATE OR REPLACE FUNCTION update_poll_vote_count() RETURNS TRIGGER AS $$
@@ -308,8 +312,30 @@ BEGIN
   ELSIF TG_OP = 'DELETE' THEN UPDATE public.poll_options SET vote_count = GREATEST(vote_count - 1, 0) WHERE id = OLD.poll_option_id; END IF;
   RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER trigger_poll_vote_count AFTER INSERT OR DELETE ON public.poll_votes FOR EACH ROW EXECUTE FUNCTION update_poll_vote_count();
+
+CREATE OR REPLACE FUNCTION update_event_rsvp_count() RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.status = 'going' THEN
+      UPDATE public.events SET rsvp_count = rsvp_count + 1 WHERE id = NEW.post_id;
+    END IF;
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF OLD.status != 'going' AND NEW.status = 'going' THEN
+      UPDATE public.events SET rsvp_count = rsvp_count + 1 WHERE id = NEW.post_id;
+    ELSIF OLD.status = 'going' AND NEW.status != 'going' THEN
+      UPDATE public.events SET rsvp_count = GREATEST(rsvp_count - 1, 0) WHERE id = NEW.post_id;
+    END IF;
+  ELSIF TG_OP = 'DELETE' THEN
+    IF OLD.status = 'going' THEN
+      UPDATE public.events SET rsvp_count = GREATEST(rsvp_count - 1, 0) WHERE id = OLD.post_id;
+    END IF;
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+CREATE TRIGGER trigger_event_rsvp_count AFTER INSERT OR UPDATE OR DELETE ON public.event_rsvps FOR EACH ROW EXECUTE FUNCTION update_event_rsvp_count();
 
 -- --------------------------------------------------------
 -- 5. ROW LEVEL SECURITY (RLS) POLICIES
@@ -346,6 +372,7 @@ CREATE POLICY "Users can update own posts." ON public.posts FOR UPDATE USING (au
 CREATE POLICY "Users can delete own posts." ON public.posts FOR DELETE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can create comments." ON public.comments FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own comments." ON public.comments FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can delete own comments." ON public.comments FOR DELETE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can create reactions." ON public.reactions FOR INSERT WITH CHECK (auth.uid() = user_id);
@@ -361,6 +388,37 @@ CREATE POLICY "Users can unfollow." ON public.followers FOR DELETE USING (auth.u
 
 CREATE POLICY "Users can see own notifications." ON public.notifications FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can mark notifications read." ON public.notifications FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can create notifications as actor." ON public.notifications FOR INSERT WITH CHECK (auth.uid() = actor_id);
+
+-- Event RSVPs Policies
+CREATE POLICY "Event RSVPs are viewable by everyone." ON public.event_rsvps FOR SELECT USING (true);
+CREATE POLICY "Users can create event RSVPs." ON public.event_rsvps FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own event RSVPs." ON public.event_rsvps FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can delete own event RSVPs." ON public.event_rsvps FOR DELETE USING (auth.uid() = user_id);
+
+-- Events Table Policies (based on underlying post ownership)
+CREATE POLICY "Events are viewable by everyone." ON public.events FOR SELECT USING (true);
+CREATE POLICY "Users can create events." ON public.events FOR INSERT WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.posts
+    WHERE posts.id = events.id
+    AND posts.user_id = auth.uid()
+  )
+);
+CREATE POLICY "Users can update own events." ON public.events FOR UPDATE USING (
+  EXISTS (
+    SELECT 1 FROM public.posts
+    WHERE posts.id = events.id
+    AND posts.user_id = auth.uid()
+  )
+);
+CREATE POLICY "Users can delete own events." ON public.events FOR DELETE USING (
+  EXISTS (
+    SELECT 1 FROM public.posts
+    WHERE posts.id = events.id
+    AND posts.user_id = auth.uid()
+  )
+);
 
 -- --------------------------------------------------------
 -- 6. POSTGIS RPC (Nearby Feed)
@@ -426,22 +484,33 @@ ON CONFLICT (slug) DO NOTHING;
 -- --------------------------------------------------------
 -- Note: Requires superuser/storage admin. Run in dashboard.
 INSERT INTO storage.buckets (id, name, public) 
-VALUES ('RAMBHAHOO', 'RAMBHAHOO', true)
+VALUES ('tapri-images', 'tapri-images', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage RLS Policies
 CREATE POLICY "Public Access" 
 ON storage.objects FOR SELECT 
-USING ( bucket_id = 'RAMBHAHOO' );
+USING ( bucket_id = 'tapri-images' );
 
 CREATE POLICY "Authenticated users can upload" 
 ON storage.objects FOR INSERT 
-WITH CHECK ( bucket_id = 'RAMBHAHOO' AND auth.role() = 'authenticated' );
+WITH CHECK ( bucket_id = 'tapri-images' AND auth.role() = 'authenticated' );
 
 CREATE POLICY "Users can update own media" 
 ON storage.objects FOR UPDATE 
-USING ( auth.uid() = owner ) WITH CHECK ( bucket_id = 'RAMBHAHOO' );
+USING ( auth.uid() = owner ) WITH CHECK ( bucket_id = 'tapri-images' );
 
 CREATE POLICY "Users can delete own media" 
 ON storage.objects FOR DELETE 
-USING ( auth.uid() = owner AND bucket_id = 'RAMBHAHOO' );
+USING ( auth.uid() = owner AND bucket_id = 'tapri-images' );
+
+-- Enable Realtime for all core tables
+ALTER PUBLICATION supabase_realtime ADD TABLE public.posts;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.comments;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.reactions;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.poll_options;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.poll_votes;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.followers;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.event_rsvps;

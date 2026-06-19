@@ -32,12 +32,23 @@ export async function toggleReaction(postId, commentId, emoji) {
     if (postId) {
       const { data: post } = await supabase.from('posts').select('user_id').eq('id', postId).single();
       if (post && post.user_id !== user.id) {
-        await supabase.from('notifications').insert({
-          user_id: post.user_id,
-          actor_id: user.id,
-          type: 'like',
-          reference_id: postId
-        });
+        const { createNotificationAndSendPush } = await import('@/app/actions/pushActions');
+        if (emoji === '👍') {
+          await createNotificationAndSendPush({
+            userId: post.user_id,
+            actorId: user.id,
+            type: 'POST_LIKE',
+            referenceId: postId
+          });
+        } else {
+          await createNotificationAndSendPush({
+            userId: post.user_id,
+            actorId: user.id,
+            type: 'POST_REACTION',
+            referenceId: postId,
+            content: emoji
+          });
+        }
       }
     }
 
@@ -62,15 +73,44 @@ export async function addComment(postId, content, parentId = null) {
 
   // Generate Notification
   if (postId) {
-    const { data: post } = await supabase.from('posts').select('user_id').eq('id', postId).single();
-    if (post && post.user_id !== user.id) {
-      await supabase.from('notifications').insert({
-        user_id: post.user_id,
-        actor_id: user.id,
-        type: 'comment',
-        reference_id: postId
-      });
+    const { createNotificationAndSendPush, parseMentionsAndNotify } = await import('@/app/actions/pushActions');
+
+    if (parentId) {
+      // It's a reply to a comment - notify the parent comment author
+      const { data: parentComment } = await supabase
+        .from('comments')
+        .select('user_id')
+        .eq('id', parentId)
+        .maybeSingle();
+
+      if (parentComment && parentComment.user_id !== user.id) {
+        await createNotificationAndSendPush({
+          userId: parentComment.user_id,
+          actorId: user.id,
+          type: 'COMMENT_REPLY',
+          referenceId: postId
+        });
+      }
+    } else {
+      // It's a root comment - notify the post owner
+      const { data: post } = await supabase.from('posts').select('user_id').eq('id', postId).maybeSingle();
+      if (post && post.user_id !== user.id) {
+        await createNotificationAndSendPush({
+          userId: post.user_id,
+          actorId: user.id,
+          type: 'POST_COMMENT',
+          referenceId: postId
+        });
+      }
     }
+
+    // Parse mentions inside comments
+    await parseMentionsAndNotify({
+      content,
+      referenceId: postId,
+      actorId: user.id,
+      isPost: false
+    });
   }
 
   revalidatePath('/');
@@ -92,6 +132,19 @@ export async function votePoll(postId, optionId) {
     if (error.code === '23505') return { error: 'Already voted on this poll' };
     return { error: error.message };
   }
+
+  // Generate Notification
+  const { data: post } = await supabase.from('posts').select('user_id').eq('id', postId).maybeSingle();
+  if (post && post.user_id !== user.id) {
+    const { createNotificationAndSendPush } = await import('@/app/actions/pushActions');
+    await createNotificationAndSendPush({
+      userId: post.user_id,
+      actorId: user.id,
+      type: 'POLL_VOTE',
+      referenceId: postId
+    });
+  }
+
   revalidatePath('/');
   return { success: true };
 }
@@ -173,6 +226,22 @@ export async function reportPost(postId, reason = 'Inappropriate content') {
       .insert({ reporter_id: user.id, post_id: postId, reason });
       
     if (error) return { error: error.message };
+
+    // Generate Admin Notifications
+    const { data: admins } = await supabase.from('profiles').select('id').eq('is_admin', true);
+    if (admins && admins.length > 0) {
+      const { createNotificationAndSendPush } = await import('@/app/actions/pushActions');
+      for (const admin of admins) {
+        await createNotificationAndSendPush({
+          userId: admin.id,
+          actorId: user.id,
+          type: 'POST_REPORT',
+          referenceId: postId,
+          content: reason
+        });
+      }
+    }
+
     return { success: true };
   } catch (err) {
     return { error: 'Failed to report post' };

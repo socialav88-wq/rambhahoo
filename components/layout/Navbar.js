@@ -5,13 +5,15 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Search, Bell, Menu, X, Flame } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { useUIStore } from '@/store/uiStore';
 import Avatar from '@/components/ui/Avatar';
 
 export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const pathname = usePathname();
-  const { user, profile } = useAuthStore();
+  const { user, profile, isLoading } = useAuthStore();
+  const unreadCount = useUIStore((s) => s.unreadNotificationsCount);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -33,7 +35,7 @@ export default function Navbar() {
               Rambhahoo
             </span>
           </Link>
-
+ 
           {/* Search bar - desktop */}
           <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md">
             <div className="relative w-full">
@@ -47,7 +49,7 @@ export default function Navbar() {
               />
             </div>
           </form>
-
+ 
           {/* Right actions */}
           <div className="flex items-center gap-2">
             {/* Mobile search toggle */}
@@ -58,7 +60,7 @@ export default function Navbar() {
             >
               {searchOpen ? <X size={20} /> : <Search size={20} />}
             </button>
-
+ 
             {/* Create Post - desktop */}
             <Link
               href="/create"
@@ -67,14 +69,22 @@ export default function Navbar() {
               <Flame size={16} />
               Create Post
             </Link>
-
-            {user ? (
+ 
+            {isLoading ? (
+              <div className="w-24 h-8 bg-bg-elevated border border-border rounded-xl animate-pulse" />
+            ) : user ? (
               <>
                 <Link
                   href="/notifications"
                   className="p-2 rounded-lg hover:bg-bg-card-hover text-text-muted hover:text-text-primary transition-colors relative"
+                  aria-label="Notifications"
                 >
                   <Bell size={20} />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-accent-red text-[10px] font-bold text-white flex items-center justify-center animate-pulse">
+                      {unreadCount}
+                    </span>
+                  )}
                 </Link>
                 <Link
                   href={`/profile/${profile?.username || ''}`}

@@ -10,6 +10,17 @@ import { useFeedStore } from '@/store/feedStore';
 import { createPost } from '@/app/actions/posts';
 import toast from 'react-hot-toast';
 
+const CATEGORIES = [
+  { value: 'discussion', label: '💬 General Discussion' },
+  { value: 'question', label: '❓ Ask a Question' },
+  { value: 'recommendation', label: '👍 Recommendation' },
+  { value: 'news', label: '📰 Civic News' },
+  { value: 'confession', label: '🤫 Local Confession' },
+  { value: 'opinion', label: '🗣️ Opinion' },
+  { value: 'battle', label: '⚔️ Local Battle' },
+  { value: 'meme', label: '🎭 Local Meme' }
+];
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const T = (label) => {
@@ -30,6 +41,10 @@ const T = (label) => {
 };
 
 async function compressImage(file) {
+  if (file.size <= 2 * 1024 * 1024) {
+    console.log('[CREATE-POST] Image is already under 2 MB. Skipping compression.');
+    return file;
+  }
   const t = T('image-compression');
   try {
     const { default: imageCompression } = await import('browser-image-compression');
@@ -76,6 +91,7 @@ export default function CreatePostForm() {
   const [content, setContent]           = useState('');
   const [locality, setLocality]         = useState(initialLocality);
   const [tags, setTags]                 = useState('');
+  const [category, setCategory]         = useState('discussion');
   const [imageFile, setImageFile]       = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [pollOptions, setPollOptions]   = useState(['', '']);
@@ -114,7 +130,6 @@ export default function CreatePostForm() {
     e.preventDefault();
     setError('');
 
-    // ── STEP 0: Button click ──────────────────────────────────────────────
     const tTotal = T('total-create-post-flow');
     console.group('%c[CREATE-POST] ══ FLOW START ══', 'color:#6366f1;font-size:14px;font-weight:bold');
     console.log('[CREATE-POST] Post type:', postType);
@@ -122,7 +137,7 @@ export default function CreatePostForm() {
     console.log('[CREATE-POST] Has image:', !!imageFile);
     console.log('[CREATE-POST] Poll options:', pollOptions);
 
-    // ── STEP 1: Client-side validation ───────────────────────────────────
+    // Client-side validation
     const tValidate = T('client-validation');
     if (!title.trim()) {
       tValidate.fail('title is empty');
@@ -136,6 +151,18 @@ export default function CreatePostForm() {
       console.groupEnd();
       return;
     }
+    if (postType === 'discussion' && !content.trim()) {
+      tValidate.fail('content is empty');
+      setError('Please add content for your discussion.');
+      console.groupEnd();
+      return;
+    }
+    if (postType === 'image' && !imageFile) {
+      tValidate.fail('image file is missing');
+      setError('Please select an image to post.');
+      console.groupEnd();
+      return;
+    }
     if (!user) {
       tValidate.fail('user not authenticated');
       console.error('[CREATE-POST] ✘ No user in auth store — redirecting to login');
@@ -144,21 +171,20 @@ export default function CreatePostForm() {
       return;
     }
     tValidate.end(`user=${user.id} type=${postType}`);
-    console.log('[CREATE-POST] User ID:', user.id);
-    console.log('[CREATE-POST] User email:', user.email);
 
     setIsSubmitting(true);
     setUploadStatus('Preparing post...');
 
     try {
-      // ── STEP 2: Build FormData ──────────────────────────────────────────
       const tFormData = T('build-formdata');
       const formData = new FormData();
       formData.append('title', title.trim());
       formData.append('content', content.trim());
       formData.append('post_type', postType);
       if (locality) formData.append('locality', locality);
-      if (tags)     formData.append('tags', tags);
+      if (tags)     formData.append('tags', tags.toLowerCase());
+      formData.append('category', category);
+      
       if (postType === 'event') {
         formData.append('event_date', new Date(eventDate).toISOString());
         if (locationName) formData.append('location_name', locationName.trim());
@@ -169,96 +195,63 @@ export default function CreatePostForm() {
       }
       tFormData.end(`locality=${locality || 'none'} tags="${tags || 'none'}" gps=${gpsLocation ? 'yes' : 'no'}`);
 
-      // Note: Image upload moved to background task
+      // Handle image upload synchronously
+      if (postType === 'image' && imageFile) {
+        try {
+          setUploadStatus('Compressing image...');
+          const fileToUpload = await compressImage(imageFile);
 
-      // Note: Poll validation moved to optimistic phase
+          setUploadStatus('Uploading image to storage...');
+          const supabase = getSupabaseClient();
+          const ext = (fileToUpload.name || imageFile.name).split('.').pop()?.toLowerCase() || 'jpg';
+          const path = `${user.id}/${Date.now()}.${ext}`;
 
-      // ── STEP 5: Discussion content check ───────────────────────────────
-      if (postType === 'discussion' && !content.trim()) {
-        setError('Please add content for your discussion.');
-        setIsSubmitting(false);
-        setUploadStatus('');
-        console.groupEnd();
-        return;
+          const { error: upErr } = await supabase.storage
+            .from('tapri-images')
+            .upload(path, fileToUpload, { contentType: fileToUpload.type });
+
+          if (upErr) throw new Error(`Storage upload failed: ${upErr.message}`);
+
+          const { data: urlData } = supabase.storage.from('tapri-images').getPublicUrl(path);
+          if (!urlData?.publicUrl) throw new Error('Failed to generate public URL for uploaded image.');
+
+          formData.set('image_url', urlData.publicUrl);
+          console.log('[CREATE-POST] Image uploaded successfully. Public URL:', urlData.publicUrl);
+        } catch (uploadErr) {
+          console.warn('[CREATE-POST] Image upload failed, fallback to text discussion:', uploadErr);
+          toast.error(`Image upload failed: ${uploadErr.message}. Posting as text discussion instead.`);
+          formData.set('post_type', 'discussion');
+          formData.delete('image_url');
+        }
       }
 
-      // ── OPTIMISTIC UI: INSTANT NAVIGATION ──────────────────────────────
-      const tempId = 'temp-' + Date.now();
-      const validOptions = postType === 'poll' ? pollOptions.filter(o => o.trim()) : [];
-      
-      const fakePost = {
-        id: tempId,
-        isOptimistic: true,
-        post_type: postType,
-        title: title.trim(),
-        content: content.trim(),
-        image_url: imagePreview || null, // the local blob URL
-        created_at: new Date().toISOString(),
-        user_id: user.id,
-        comment_count: 0,
-        upvotes: 0,
-        downvotes: 0,
-        profiles: {
-          username: user.user_metadata?.username || user.email?.split('@')[0] || 'User',
-          display_name: user.user_metadata?.display_name || 'You',
-          avatar_url: user.user_metadata?.avatar_url,
-        },
-        poll_options: postType === 'poll' ? validOptions.map((o, i) => ({ id: `temp-opt-${i}`, option_text: o, vote_count: 0, sort_order: i })) : []
-      };
-
-      // Instantly inject into the global feed
-      addOptimisticPost(fakePost);
-      
-      // Instantly navigate back
-      toast('Posting...', { icon: '🚀' });
-      router.push('/');
-      console.groupEnd();
-
-      // ── BACKGROUND TASK: HEAVY LIFTING ─────────────────────────────────
-      (async () => {
-        try {
-          // 3. Image Upload (Background)
-          if (postType === 'image' && imageFile) {
-            const fileToUpload = await compressImage(imageFile);
-            const supabase = getSupabaseClient();
-            const ext  = (fileToUpload.name || imageFile.name).split('.').pop()?.toLowerCase() || 'jpg';
-            const path = `${user.id}/${Date.now()}.${ext}`;
-
-            const { error: upErr } = await supabase.storage
-              .from('RAMBHAHOO')
-              .upload(path, fileToUpload, { contentType: fileToUpload.type });
-
-            if (upErr) throw new Error(`Image upload failed: ${upErr.message}`);
-
-            const { data: urlData } = supabase.storage.from('RAMBHAHOO').getPublicUrl(path);
-            formData.set('image_url', urlData.publicUrl);
-          }
-
-          if (postType === 'poll') {
-            formData.set('poll_options', JSON.stringify(validOptions));
-          }
-
-          // 6. Server Action Call
-          const result = await createPost(formData);
-          
-          if (result?.error) {
-            throw new Error(result.error);
-          } else if (result?.slug) {
-            // Replace the fake post with the real one (or just remove the fake and let Feed revalidate)
-            // It's safer to remove it so it's fully re-fetched if we do a hard refresh, but for SPA:
-            removeOptimisticPost(tempId);
-            toast.success('Posted successfully!');
-          }
-        } catch (err) {
-          console.error('[CREATE-POST] Background Task Error:', err);
-          updateOptimisticPost(tempId, { hasError: true, errorMessage: err.message });
-          toast.error(`Failed to post: ${err.message}`);
+      if (postType === 'poll') {
+        const validOptions = pollOptions.filter(o => o.trim());
+        if (validOptions.length < 2) {
+          throw new Error('Please provide at least 2 options for the poll.');
         }
-      })();
+        formData.set('poll_options', JSON.stringify(validOptions));
+      }
 
+      setUploadStatus('Saving post to database...');
+      const result = await createPost(formData);
+      
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+
+      toast.success('Posted successfully!');
+      tTotal.end('success');
+      
+      // Navigate to home page and refresh to display post immediately
+      router.push('/');
+      router.refresh();
     } catch (err) {
-      console.error('[CREATE-POST] ✘ UNCAUGHT ERROR:', err);
-      setError(`Unexpected error: ${err?.message || String(err)}`);
+      tTotal.fail(err);
+      console.error('[CREATE-POST] ✘ ERROR:', err);
+      setError(err.message || 'An unexpected error occurred.');
+      toast.error(`Failed to post: ${err.message}`);
+    } finally {
       setIsSubmitting(false);
       setUploadStatus('');
       console.groupEnd();
@@ -317,6 +310,24 @@ export default function CreatePostForm() {
               <span className="text-sm font-medium">{t.label}</span>
             </button>
           ))}
+        </div>
+
+        {/* Category Selector */}
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1.5">
+            Category
+          </label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full bg-bg-elevated border border-border rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:border-blue-primary"
+          >
+            {CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Title */}

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Compass, PlusCircle, Bell, User } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { useUIStore } from '@/store/uiStore';
 import Avatar from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
 export default function BottomNav() {
   const pathname = usePathname();
   const { profile } = useAuthStore();
+  const unreadCount = useUIStore((s) => s.unreadNotificationsCount);
 
   const isActive = (href) => {
     if (href === '/') return pathname === '/';
@@ -65,7 +67,14 @@ export default function BottomNav() {
                   {item.label === 'Profile' && profile ? (
                     <Avatar src={profile.avatar_url} name={profile.display_name || profile.username} size="sm" className={`w-[26px] h-[26px] border-[1.5px] ${active ? 'border-blue-primary' : 'border-transparent'}`} />
                   ) : (
-                    <Icon size={22} strokeWidth={active ? 2.5 : 1.5} />
+                    <>
+                      <Icon size={22} strokeWidth={active ? 2.5 : 1.5} />
+                      {item.label === 'Alerts' && unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1.5 w-4 h-4 rounded-full bg-accent-red text-[9px] font-black text-white flex items-center justify-center border-2 border-white animate-pulse">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </>
                   )}
                   {active && item.label !== 'Profile' && (
                     <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-blue-primary rounded-full" />

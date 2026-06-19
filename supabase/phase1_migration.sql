@@ -1,5 +1,5 @@
 -- ============================================
--- RAMBHAHOO - PHASE 1 DATABASE MIGRATION
+-- tapri-images - PHASE 1 DATABASE MIGRATION
 -- Adds PostGIS, Reputation, Followers, and Location Tracking
 -- ============================================
 

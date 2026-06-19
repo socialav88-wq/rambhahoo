@@ -9,10 +9,12 @@ import Button from '@/components/ui/Button';
 import { User, Image as ImageIcon, Camera } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
+import { usePushNotifications } from '@/components/providers/PushNotificationProvider';
 
 export default function SettingsPage() {
   const router = useRouter();
   const { user, profile } = useAuthStore();
+  const { isSupported, isSubscribed, permissionStatus, isSubscribing, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
   
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
@@ -71,7 +73,7 @@ export default function SettingsPage() {
         const filePath = `${user.id}/avatars/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('RAMBHAHOO')
+          .from('tapri-images')
           .upload(filePath, fileToUpload, { contentType: fileToUpload.type });
 
         if (uploadError) {
@@ -80,7 +82,7 @@ export default function SettingsPage() {
           return;
         }
 
-        const { data } = supabase.storage.from('RAMBHAHOO').getPublicUrl(filePath);
+        const { data } = supabase.storage.from('tapri-images').getPublicUrl(filePath);
         finalAvatarUrl = data.publicUrl;
       } catch (err) {
         toast.error('Upload error: ' + err.message);
@@ -216,6 +218,42 @@ export default function SettingsPage() {
             </Button>
           </div>
         </form>
+
+        {/* Notification Settings */}
+        <div className="mt-8 pt-6 border-t border-border animate-fade-in">
+          <h3 className="text-lg font-semibold text-text-primary mb-2 font-[family-name:var(--font-poppins)]">
+            Notification Settings
+          </h3>
+          <p className="text-sm text-text-dim mb-4">
+            Receive real-time push notifications on this device when other users interact with your posts or profile.
+          </p>
+          
+          {!isSupported ? (
+            <div className="p-4 bg-bg-elevated rounded-xl border border-border text-sm text-text-dim">
+              Push notifications are not supported by your browser or device.
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-bg-elevated rounded-xl border border-border">
+              <div>
+                <p className="font-medium text-text-primary text-sm sm:text-base">
+                  {isSubscribed ? 'Push Notifications Enabled' : 'Push Notifications Disabled'}
+                </p>
+                <p className="text-xs text-text-dim mt-0.5">
+                  Status: {permissionStatus === 'default' ? 'Not yet requested' : permissionStatus === 'denied' ? 'Blocked (requires browser settings reset)' : 'Permission granted'}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant={isSubscribed ? 'outline' : 'default'}
+                loading={isSubscribing}
+                onClick={isSubscribed ? unsubscribeFromPush : subscribeToPush}
+                className="w-full sm:w-auto shrink-0"
+              >
+                {isSubscribed ? 'Disable' : 'Enable'}
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* Log Out Section */}
         <div className="mt-8 pt-6 border-t border-border">

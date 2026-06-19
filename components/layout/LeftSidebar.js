@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, TrendingUp, Search, Settings, MapPin, Flame } from 'lucide-react';
+import { Home, TrendingUp, Search, Settings, MapPin, Flame, HelpCircle } from 'lucide-react';
 import { LOCALITIES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 const NAV_LINKS = [
   { label: 'Home', href: '/', icon: Home },
   { label: 'Trending', href: '/trending', icon: TrendingUp },
+  { label: 'Need Advice', href: '/advice', icon: HelpCircle },
   { label: 'Search', href: '/search', icon: Search },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];

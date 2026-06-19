@@ -13,7 +13,15 @@ export async function generateMetadata({ params }) {
   const { username } = await params;
   const profile = await fetchUserProfile(username);
   
-  if (!profile) return { title: 'User not found' };
+  if (!profile) {
+    return {
+      title: 'User Not Found | Rambhahoo',
+      robots: {
+        index: false,
+        follow: false,
+      }
+    };
+  }
 
   return generateProfileMetadata({
     username: profile.username,

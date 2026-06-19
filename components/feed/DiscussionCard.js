@@ -9,7 +9,7 @@ export default function DiscussionCard({ post }) {
   const { title, content, slug, tags = [] } = post;
 
   return (
-    <article className="glass-card hover-card rounded-3xl p-5 animate-fade-in relative">
+    <article className="bg-bg-card border border-border hover-card rounded-3xl p-5 animate-fade-in relative">
       <PostHeader post={post} />
 
       {/* Content */}

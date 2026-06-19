@@ -1,5 +1,5 @@
 -- ============================================
--- RAMBHAHOO DATABASE SCHEMA
+-- tapri-images DATABASE SCHEMA
 -- Hyperlocal Social Network for Indian Neighborhoods
 -- ============================================
 

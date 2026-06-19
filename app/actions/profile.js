@@ -87,7 +87,7 @@ export async function toggleFollow(followingId) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Not authenticated' };
 
-  if (user.id === followingId) return { error: 'Cannot follow yourself' };
+  if (user.id === followingId) return { error: 'Cannot add yourself to your own Circle' };
 
   try {
     const { data: existing } = await supabase
@@ -104,10 +104,11 @@ export async function toggleFollow(followingId) {
       await supabase.from('followers').insert({ follower_id: user.id, following_id: followingId });
       
       // Notify the user they were followed
-      await supabase.from('notifications').insert({
-        user_id: followingId,
-        actor_id: user.id,
-        type: 'follow',
+      const { createNotificationAndSendPush } = await import('@/app/actions/pushActions');
+      await createNotificationAndSendPush({
+        userId: followingId,
+        actorId: user.id,
+        type: 'CIRCLE_ADD',
       });
       
       return { success: true, action: 'followed' };

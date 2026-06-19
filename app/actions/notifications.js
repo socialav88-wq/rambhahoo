@@ -42,3 +42,19 @@ export async function markAsRead(notificationId) {
     
   revalidatePath('/notifications');
 }
+
+export async function markAllAsRead() {
+  if (!isSupabaseConfigured()) return { error: 'Backend not configured yet.' };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Not authenticated' };
+
+  const { error } = await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('user_id', user.id);
+
+  if (error) return { error: error.message };
+  revalidatePath('/notifications');
+  return { success: true };
+}

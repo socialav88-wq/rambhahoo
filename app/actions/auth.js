@@ -33,44 +33,34 @@ export async function signup(formData) {
   return { success: true };
 }
 
-export async function loginWithGoogle() {
-  if (!isSupabaseConfigured()) return { error: 'Backend not configured yet.' };
-  
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
-    },
-  });
-  if (error) return { error: error.message };
-  return { url: data.url };
-}
 
-export async function loginWithGoogleToken(idToken) {
-  if (!isSupabaseConfigured()) return { error: 'Backend not configured yet.' };
-  
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithIdToken({
-    provider: 'google',
-    token: idToken,
-  });
-  
-  if (error) return { error: error.message };
-  revalidatePath('/');
-  return { success: true };
-}
 
 export async function logout() {
   if (!isSupabaseConfigured()) return;
+  console.log('[AUTH-LOGOUT] Initiating sign out sequence');
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    console.error('[AUTH-LOGOUT-ERROR] Sign out failed:', error.message);
+  } else {
+    console.log('[AUTH-LOGOUT-SUCCESS] User signed out successfully');
+  }
   revalidatePath('/');
 }
 
 export async function getSession() {
   if (!isSupabaseConfigured()) return null;
   const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error) {
+    console.error('[AUTH-GETSESSION-ERROR] Failed to query session:', error.message);
+    return null;
+  }
+  if (session) {
+    console.log('[AUTH-GETSESSION] Session successfully queried. User ID:', session.user.id);
+  } else {
+    console.log('[AUTH-GETSESSION] No active session retrieved.');
+  }
   return session;
 }
+

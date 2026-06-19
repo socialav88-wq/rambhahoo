@@ -4,14 +4,10 @@ import DiscussionCard from './DiscussionCard';
 import ImageCard from './ImageCard';
 import PollCard from './PollCard';
 import EventCard from './EventCard';
-import { Loader2, AlertCircle, Trash2 } from 'lucide-react';
-import { useAuthStore } from '@/store/authStore';
-import { deletePost } from '@/app/actions/posts';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import toast from 'react-hot-toast';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { memo } from 'react';
 
-export default function PostCard({ post, priority = false }) {
+function PostCard({ post, priority = false }) {
   if (!post) return null;
 
   let content;
@@ -54,3 +50,5 @@ export default function PostCard({ post, priority = false }) {
     </div>
   );
 }
+
+export default memo(PostCard);

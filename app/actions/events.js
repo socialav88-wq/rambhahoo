@@ -46,11 +46,12 @@ export async function toggleRsvp(postId, status = 'going') {
     // Create notification for event creator
     const { data: post } = await supabase.from('posts').select('user_id').eq('id', postId).single();
     if (post && post.user_id !== user.id && status === 'going') {
-      await supabase.from('notifications').insert({
-        user_id: post.user_id,
-        actor_id: user.id,
-        type: 'rsvp',
-        reference_id: postId
+      const { createNotificationAndSendPush } = await import('@/app/actions/pushActions');
+      await createNotificationAndSendPush({
+        userId: post.user_id,
+        actorId: user.id,
+        type: 'EVENT_RSVP',
+        referenceId: postId
       });
     }
   }

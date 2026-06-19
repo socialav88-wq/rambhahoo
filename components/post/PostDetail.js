@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { ArrowLeft, MessageSquare, Share2, Bookmark, MoreHorizontal, AlertCircle, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Avatar from '@/components/ui/Avatar';
 import Badge from '@/components/ui/Badge';
 import ReactionBar from '@/components/reactions/ReactionBar';
@@ -12,6 +12,7 @@ import PollVoter from '@/components/post/PollVoter';
 import { timeAgo, formatNumber } from '@/lib/utils';
 import { useSavedPosts } from '@/hooks/useSavedPosts';
 import { useAuthStore } from '@/store/authStore';
+import { useFeedStore } from '@/store/feedStore';
 import { deletePost } from '@/app/actions/posts';
 
 export default function PostDetail({ post }) {
@@ -20,7 +21,16 @@ export default function PostDetail({ post }) {
   const { user } = useAuthStore();
   const [isDeleting, setIsDeleting] = useState(false);
 
-  if (!post) {
+  const { posts, setPosts } = useFeedStore();
+  const storePost = posts.find(p => p.id === post?.id) || post;
+
+  useEffect(() => {
+    if (post && !posts.some(p => p.id === post.id)) {
+      setPosts([post, ...posts]);
+    }
+  }, [post, posts, setPosts]);
+
+  if (!storePost) {
     return (
       <div className="flex flex-col items-center justify-center p-12 bg-bg-card rounded-xl border border-border shadow-sm mt-6">
         <AlertCircle size={48} className="text-text-dim mb-4" />
@@ -43,7 +53,7 @@ export default function PostDetail({ post }) {
     localities: locality,
     reactions_summary = {},
     poll_options = []
-  } = post;
+  } = storePost;
 
   return (
     <article className="max-w-3xl mx-auto mt-4 sm:mt-8 pb-12 animate-fade-in">
@@ -112,11 +122,11 @@ export default function PostDetail({ post }) {
         </h1>
 
         {post_type === 'image' && image_url && (
-          <div className="relative w-full aspect-[4/5] rounded-xl overflow-hidden bg-bg-elevated mb-6 shadow-sm border border-border">
+          <div className="w-full rounded-xl overflow-hidden bg-bg-elevated mb-6 shadow-sm border border-border flex justify-center">
             <img 
               src={image_url} 
               alt={title} 
-              className="w-full h-full object-cover"
+              className="w-full h-auto max-h-[80vh] object-contain"
             />
           </div>
         )}

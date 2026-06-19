@@ -18,6 +18,8 @@ export default function PostFooter({ post }) {
   const [showPicker, setShowPicker] = useState(false);
   const [showFullPicker, setShowFullPicker] = useState(false);
   const [isReacting, setIsReacting] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const shareRef = useRef(null);
   
   // Floating emojis state
   const [floatingEmojis, setFloatingEmojis] = useState([]);
@@ -32,6 +34,21 @@ export default function PostFooter({ post }) {
   const initialHasLiked = (post.user_reactions || []).includes(defaultEmoji);
   const [hasLiked, setHasLiked] = useState(initialHasLiked);
   const [likeAnimate, setLikeAnimate] = useState(false);
+
+  useEffect(() => {
+    setLocalReactions(post.reactions_summary || {});
+    setHasLiked((post.user_reactions || []).includes(defaultEmoji));
+  }, [post.reactions_summary, post.user_reactions]);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (shareRef.current && !shareRef.current.contains(event.target)) {
+        setShowShareMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const timeoutRef = useRef(null);
 
@@ -108,17 +125,52 @@ export default function PostFooter({ post }) {
     setIsReacting(false);
   };
 
-  const handleShare = (e) => {
+  const getPostUrl = () => {
+    if (typeof window === 'undefined') return '';
+    return `${window.location.origin}/post/${post.slug}`;
+  };
+
+  const getPostText = () => {
+    return `Check this out on Rambhahoo: "${post.title}"`;
+  };
+
+  const copyToClipboard = (e) => {
+    e.preventDefault();
+    navigator.clipboard.writeText(getPostUrl());
+    toast.success('Link copied to clipboard!');
+    setShowShareMenu(false);
+  };
+
+  const shareWhatsApp = (e) => {
+    e.preventDefault();
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(getPostText() + ' ' + getPostUrl())}`, '_blank');
+    setShowShareMenu(false);
+  };
+
+  const shareX = (e) => {
+    e.preventDefault();
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(getPostText())}&url=${encodeURIComponent(getPostUrl())}`, '_blank');
+    setShowShareMenu(false);
+  };
+
+  const shareFacebook = (e) => {
+    e.preventDefault();
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(getPostUrl())}`, '_blank');
+    setShowShareMenu(false);
+  };
+
+  const shareNative = (e) => {
     e.preventDefault();
     if (navigator.share) {
       navigator.share({
         title: post.title,
-        url: `${window.location.origin}/post/${post.slug}`,
+        text: post.content ? post.content.substring(0, 100) : post.title,
+        url: getPostUrl(),
       }).catch(console.error);
     } else {
-      navigator.clipboard.writeText(`${window.location.origin}/post/${post.slug}`);
-      toast.success('Link copied to clipboard!');
+      copyToClipboard(e);
     }
+    setShowShareMenu(false);
   };
 
   return (
@@ -202,14 +254,56 @@ export default function PostFooter({ post }) {
           <MessageSquare size={18} />
           <span className="text-xs font-medium">{formatNumber(post.comment_count || 0)}</span>
         </Link>
-        <button 
-          onClick={handleShare}
-          aria-label="Share post" 
-          className="flex items-center gap-1.5 p-2 rounded-full text-text-dim hover:bg-bg-elevated hover:text-accent-green transition-all active:scale-95"
-        >
-          <Share2 size={18} />
-          <span className="text-xs font-medium hidden sm:inline">Share</span>
-        </button>
+        <div className="relative" ref={shareRef}>
+          <button 
+            onClick={(e) => { e.preventDefault(); setShowShareMenu(!showShareMenu); }}
+            aria-label="Share post" 
+            className={`flex items-center gap-1.5 p-2 rounded-full transition-all active:scale-95 ${
+              showShareMenu ? 'text-accent-green bg-accent-green/10' : 'text-text-dim hover:bg-bg-elevated hover:text-accent-green'
+            }`}
+          >
+            <Share2 size={18} />
+            <span className="text-xs font-medium hidden sm:inline">Share</span>
+          </button>
+          
+          {showShareMenu && (
+            <div className="absolute right-0 bottom-full mb-2 bg-bg-card border border-border rounded-xl shadow-lg py-2 w-48 z-30 animate-bounce-in">
+              <button 
+                onClick={shareWhatsApp} 
+                className="w-full text-left px-4 py-2 hover:bg-bg-card-hover text-sm text-text-primary flex items-center gap-2"
+              >
+                <span>💬</span> WhatsApp
+              </button>
+              <button 
+                onClick={shareX} 
+                className="w-full text-left px-4 py-2 hover:bg-bg-card-hover text-sm text-text-primary flex items-center gap-2"
+              >
+                <span>𝕏</span> X (Twitter)
+              </button>
+              <button 
+                onClick={shareFacebook} 
+                className="w-full text-left px-4 py-2 hover:bg-bg-card-hover text-sm text-text-primary flex items-center gap-2"
+              >
+                <span>👤</span> Facebook
+              </button>
+              {typeof navigator !== 'undefined' && navigator.share && (
+                <button 
+                  onClick={shareNative} 
+                  className="w-full text-left px-4 py-2 hover:bg-bg-card-hover text-sm text-text-primary flex items-center gap-2"
+                >
+                  <span>📤</span> Share Via...
+                </button>
+              )}
+              <div className="border-t border-border/50 my-1"></div>
+              <button 
+                onClick={copyToClipboard} 
+                className="w-full text-left px-4 py-2 hover:bg-bg-card-hover text-sm text-text-primary flex items-center gap-2 font-medium"
+              >
+                <span>🔗</span> Copy Link
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
