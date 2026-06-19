@@ -96,13 +96,24 @@ export default function PushNotificationProvider({ children }) {
   }, [user, isSupported, registration]);
 
   const subscribeToPush = async () => {
-    if (!isSupported || !registration) {
+    if (!isSupported) {
       toast.error('Push notifications are not supported on this browser or device.');
       return;
     }
 
     setIsSubscribing(true);
     try {
+      let reg = registration;
+      if (!reg && 'serviceWorker' in navigator) {
+        reg = await navigator.serviceWorker.ready;
+      }
+
+      if (!reg) {
+        toast.error('Service worker is initializing. Please try again in a few seconds.');
+        setIsSubscribing(false);
+        return;
+      }
+
       const permission = await Notification.requestPermission();
       setPermissionStatus(permission);
 
@@ -123,12 +134,12 @@ export default function PushNotificationProvider({ children }) {
       const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
       
       // Clean up any existing active subscription first
-      const existingSub = await registration.pushManager.getSubscription();
+      const existingSub = await reg.pushManager.getSubscription();
       if (existingSub) {
         await existingSub.unsubscribe();
       }
 
-      const subscription = await registration.pushManager.subscribe({
+      const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey,
       });
