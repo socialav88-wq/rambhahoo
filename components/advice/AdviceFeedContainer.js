@@ -6,7 +6,7 @@ import AdviceFeedCard, { ADVICE_CATEGORIES_MAP } from './AdviceFeedCard';
 import { fetchAdviceFeed } from '@/app/actions/advice';
 import { FeedSkeleton } from '@/components/ui/Skeleton';
 import Button from '@/components/ui/Button';
-import { HelpCircle, ChevronRight, MessageSquareHeart } from 'lucide-react';
+import { HelpCircle, ChevronRight, MessageSquareHeart, Check } from 'lucide-react';
 import { LOCALITIES } from '@/lib/constants';
 
 export default function AdviceFeedContainer({ initialPosts, user }) {
