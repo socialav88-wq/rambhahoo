@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { getInitials } from '@/lib/utils';
+import { User } from 'lucide-react';
 
 const SIZES = {
   xs: 'w-6 h-6 text-[10px]',
@@ -47,19 +48,25 @@ export default function Avatar({ src, name, size = 'md', className = '' }) {
   const dim = SIZE_DIMS[size] || SIZE_DIMS.md;
   const [imgError, setImgError] = useState(false);
   
-  const displayName = name || 'user';
   const showFallback = !src || imgError;
+  const initials = getInitials(name);
 
   return (
     <div className={`relative ${sizeClass} rounded-full overflow-hidden ring-2 ring-border-light shadow-sm shrink-0 flex items-center justify-center font-bold font-[family-name:var(--font-poppins)] transition-colors select-none ${className}`}>
       {showFallback ? (
-        <div className={`w-full h-full flex items-center justify-center ${getHashBackground(displayName)}`}>
-          {getInitials(displayName)}
-        </div>
+        initials ? (
+          <div className={`w-full h-full flex items-center justify-center ${getHashBackground(name)}`}>
+            {initials}
+          </div>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-bg-elevated text-slate-400 dark:text-text-muted">
+            <User size={Math.round(dim * 0.6)} strokeWidth={2} />
+          </div>
+        )
       ) : (
         <img
           src={src}
-          alt={displayName}
+          alt={name || 'user'}
           width={dim}
           height={dim}
           className="w-full h-full object-cover"
