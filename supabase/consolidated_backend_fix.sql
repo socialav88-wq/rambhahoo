@@ -218,13 +218,18 @@ CREATE POLICY "Users can update own comments." ON public.comments FOR UPDATE USI
 -- PART 4: REALTIME REPLICATION ENABLEMENT
 -- ----------------------------------------------------
 
--- Ensure all tables are added to the supabase_realtime publication to trigger WebSocket sync
-ALTER PUBLICATION supabase_realtime ADD TABLE public.posts;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.comments;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.reactions;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.poll_options;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.poll_votes;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.followers;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.event_rsvps;
+-- Ensure all tables are added to the supabase_realtime publication to trigger WebSocket sync safely
+DO $$
+DECLARE
+  tbl TEXT;
+  tbls TEXT[] := ARRAY['posts', 'comments', 'reactions', 'poll_options', 'poll_votes', 'profiles', 'notifications', 'followers', 'event_rsvps'];
+BEGIN
+  FOREACH tbl IN ARRAY tbls LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables 
+      WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = tbl
+    ) THEN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', tbl);
+    END IF;
+  END LOOP;
+END $$;

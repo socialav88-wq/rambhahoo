@@ -379,12 +379,18 @@ BEGIN
 END;
 $$;
 
--- 10. REALTIME ENABLEMENT
-ALTER PUBLICATION supabase_realtime ADD TABLE public.advice_posts;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.advice_poll_options;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.advice_poll_votes;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.advice_replies;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.advice_reply_ratings;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.advice_post_reactions;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.advice_followers;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.advice_updates;
+-- 10. REALTIME ENABLEMENT safely
+DO $$
+DECLARE
+  tbl TEXT;
+  tbls TEXT[] := ARRAY['advice_posts', 'advice_poll_options', 'advice_poll_votes', 'advice_replies', 'advice_reply_ratings', 'advice_post_reactions', 'advice_followers', 'advice_updates'];
+BEGIN
+  FOREACH tbl IN ARRAY tbls LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables 
+      WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = tbl
+    ) THEN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', tbl);
+    END IF;
+  END LOOP;
+END $$;
