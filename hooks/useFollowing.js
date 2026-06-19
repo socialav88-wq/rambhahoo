@@ -1,66 +1,22 @@
-import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { toggleFollow } from '@/app/actions/profile';
+import { useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import toast from 'react-hot-toast';
+import { useCircleStore } from '@/store/circleStore';
 
 export function useFollowing() {
-  const [following, setFollowing] = useState({});
   const { user } = useAuthStore();
+  const { following, fetchFollowing, toggleFollow, reset } = useCircleStore();
 
-  // Load from backend on mount
+  // Load from backend on mount/user change
   useEffect(() => {
-    async function fetchFollowing() {
-      if (!user) return;
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('followers')
-        .select('following_id')
-        .eq('follower_id', user.id);
-        
-      if (!error && data) {
-        const followingMap = {};
-        data.forEach(row => { followingMap[row.following_id] = true; });
-        setFollowing(followingMap);
-      }
-    }
-    fetchFollowing();
-  }, [user]);
-
-  const handleToggleFollow = async (userId, userName) => {
-    if (!user) {
-      toast.error('Please login to follow others');
-      return;
-    }
-
-    if (user.id === userId) return;
-
-    // Optimistic UI Update
-    const isCurrentlyFollowing = !!following[userId];
-    setFollowing(prev => ({
-      ...prev,
-      [userId]: !isCurrentlyFollowing
-    }));
-
-    // Server Action
-    const res = await toggleFollow(userId);
-    if (res?.error) {
-      // Revert on error
-      setFollowing(prev => ({
-        ...prev,
-        [userId]: isCurrentlyFollowing
-      }));
-      toast.error(res.error);
+    if (user?.id) {
+      fetchFollowing(user.id);
     } else {
-      if (res.action === 'followed') {
-        toast.success(`Added ${userName} to your Circle!`);
-      } else {
-        toast.success(`Removed ${userName} from your Circle`);
-      }
+      reset();
     }
-  };
+  }, [user?.id, fetchFollowing, reset]);
 
   const isFollowingUser = (userId) => !!following[userId];
 
-  return { following, toggleFollow: handleToggleFollow, isFollowingUser };
+  return { following, toggleFollow, isFollowingUser };
 }
+

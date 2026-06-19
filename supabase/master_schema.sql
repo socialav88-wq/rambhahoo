@@ -319,17 +319,17 @@ CREATE OR REPLACE FUNCTION update_event_rsvp_count() RETURNS TRIGGER AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
     IF NEW.status = 'going' THEN
-      UPDATE public.events SET rsvp_count = rsvp_count + 1 WHERE id = NEW.post_id;
+      UPDATE public.events SET rsvp_count = rsvp_count + 1 WHERE post_id = NEW.post_id;
     END IF;
   ELSIF TG_OP = 'UPDATE' THEN
     IF OLD.status != 'going' AND NEW.status = 'going' THEN
-      UPDATE public.events SET rsvp_count = rsvp_count + 1 WHERE id = NEW.post_id;
+      UPDATE public.events SET rsvp_count = rsvp_count + 1 WHERE post_id = NEW.post_id;
     ELSIF OLD.status = 'going' AND NEW.status != 'going' THEN
-      UPDATE public.events SET rsvp_count = GREATEST(rsvp_count - 1, 0) WHERE id = NEW.post_id;
+      UPDATE public.events SET rsvp_count = GREATEST(rsvp_count - 1, 0) WHERE post_id = NEW.post_id;
     END IF;
   ELSIF TG_OP = 'DELETE' THEN
     IF OLD.status = 'going' THEN
-      UPDATE public.events SET rsvp_count = GREATEST(rsvp_count - 1, 0) WHERE id = OLD.post_id;
+      UPDATE public.events SET rsvp_count = GREATEST(rsvp_count - 1, 0) WHERE post_id = OLD.post_id;
     END IF;
   END IF;
   RETURN COALESCE(NEW, OLD);
@@ -401,21 +401,21 @@ CREATE POLICY "Events are viewable by everyone." ON public.events FOR SELECT USI
 CREATE POLICY "Users can create events." ON public.events FOR INSERT WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.posts
-    WHERE posts.id = events.id
+    WHERE posts.id = events.post_id
     AND posts.user_id = auth.uid()
   )
 );
 CREATE POLICY "Users can update own events." ON public.events FOR UPDATE USING (
   EXISTS (
     SELECT 1 FROM public.posts
-    WHERE posts.id = events.id
+    WHERE posts.id = events.post_id
     AND posts.user_id = auth.uid()
   )
 );
 CREATE POLICY "Users can delete own events." ON public.events FOR DELETE USING (
   EXISTS (
     SELECT 1 FROM public.posts
-    WHERE posts.id = events.id
+    WHERE posts.id = events.post_id
     AND posts.user_id = auth.uid()
   )
 );
