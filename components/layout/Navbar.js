@@ -12,7 +12,7 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const pathname = usePathname();
-  const { user, profile, isLoading } = useAuthStore();
+  const { user, profile, isLoading, authError } = useAuthStore();
   const unreadCount = useUIStore((s) => s.unreadNotificationsCount);
 
   const handleSearch = (e) => {
@@ -122,6 +122,7 @@ export default function Navbar() {
           <div>Profile: {profile ? `${profile.username} (${profile.display_name})` : 'none'}</div>
           <div>Avatar URL: {profile?.avatar_url ? (profile.avatar_url.substring(0, 35) + '...') : 'none'}</div>
           <div>IsLoading: {isLoading ? 'true' : 'false'}</div>
+          <div>Error: <span className="text-red-400">{authError || 'none'}</span></div>
         </div>
 
         {/* Mobile search - expandable */}

@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/store/authStore';
 
 // Resilient profile retrieval with retry and fallback
-async function getOrCreateProfile(supabase, user, mounted = true) {
+async function getOrCreateProfile(supabase, user, mounted = true, setAuthError = null) {
   if (!user) return null;
   
   let profile = null;
@@ -18,6 +18,10 @@ async function getOrCreateProfile(supabase, user, mounted = true) {
       .eq('id', user.id)
       .maybeSingle();
       
+    if (error && setAuthError) {
+      setAuthError(`Select error: ${error.message}`);
+    }
+       
     if (data) {
       profile = data;
       break;
@@ -52,6 +56,9 @@ async function getOrCreateProfile(supabase, user, mounted = true) {
       console.log(`[AUTH-PROFILE-FALLBACK-SUCCESS] Created fallback profile:`, profile.username);
     } else if (insertError) {
       console.error(`[AUTH-PROFILE-FALLBACK-ERROR] Failed to insert fallback profile:`, insertError.message);
+      if (setAuthError) {
+        setAuthError(`Insert error: ${insertError.message}`);
+      }
     }
   }
 
@@ -59,7 +66,7 @@ async function getOrCreateProfile(supabase, user, mounted = true) {
 }
 
 export default function AuthProvider({ children }) {
-  const { setUser, setProfile, setLoading } = useAuthStore();
+  const { setUser, setProfile, setLoading, setAuthError } = useAuthStore();
   const supabase = createClient();
 
   useEffect(() => {
@@ -71,13 +78,16 @@ export default function AuthProvider({ children }) {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (error) throw error;
+        if (error) {
+          setAuthError(`Session error: ${error.message}`);
+          throw error;
+        }
 
         if (session?.user && mounted) {
           console.log('[AUTH-PROVIDER-SESSION] Active session restored successfully. User ID:', session.user.id);
           setUser(session.user);
           // Fetch profile using resilient helper
-          const profile = await getOrCreateProfile(supabase, session.user, mounted);
+          const profile = await getOrCreateProfile(supabase, session.user, mounted, setAuthError);
           if (profile && mounted) {
             console.log('[AUTH-PROVIDER-PROFILE] Profile loaded successfully:', profile.username);
             setProfile(profile);
@@ -121,7 +131,7 @@ export default function AuthProvider({ children }) {
           setUser(session.user);
           
           // Load or refresh the user profile to keep Zustand sync robust on ANY auth event (e.g. INITIAL_SESSION, TOKEN_REFRESHED, SIGNED_IN)
-          const profile = await getOrCreateProfile(supabase, session.user, mounted);
+          const profile = await getOrCreateProfile(supabase, session.user, mounted, setAuthError);
           if (profile && mounted) {
             console.log(`[AUTH-PROVIDER-PROFILE] Profile synced on event ${event}:`, profile.username);
             setProfile(profile);
