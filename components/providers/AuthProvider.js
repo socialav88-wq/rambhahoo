@@ -122,7 +122,7 @@ export default function AuthProvider({ children }) {
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!mounted) return;
         
         console.log(`[AUTH-PROVIDER-EVENT] Auth state change event: ${event}. User ID in session:`, session?.user?.id || 'none');
@@ -130,12 +130,19 @@ export default function AuthProvider({ children }) {
         if (session?.user) {
           setUser(session.user);
           
-          // Load or refresh the user profile to keep Zustand sync robust on ANY auth event (e.g. INITIAL_SESSION, TOKEN_REFRESHED, SIGNED_IN)
-          const profile = await getOrCreateProfile(supabase, session.user, mounted, setAuthError);
-          if (profile && mounted) {
-            console.log(`[AUTH-PROVIDER-PROFILE] Profile synced on event ${event}:`, profile.username);
-            setProfile(profile);
-          }
+          // Fetch profile asynchronously to prevent GoTrue storage deadlock inside lock callbacks
+          (async () => {
+            try {
+              const profile = await getOrCreateProfile(supabase, session.user, mounted, setAuthError);
+              if (profile && mounted) {
+                console.log(`[AUTH-PROVIDER-PROFILE] Profile synced on event ${event}:`, profile.username);
+                setProfile(profile);
+              }
+            } catch (err) {
+              console.error(`[AUTH-PROVIDER-PROFILE-ERROR] Async profile load failed on event ${event}:`, err);
+            }
+          })();
+
           if (event === 'SIGNED_IN') {
             authChannel?.postMessage('login');
           }

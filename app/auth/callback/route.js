@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 export async function GET(request) {
   const { searchParams, origin } = new URL(request.url);
@@ -37,10 +38,27 @@ export async function GET(request) {
           user_id: verifiedSession?.user?.id || null,
         });
       }
-      return NextResponse.redirect(`${origin}${next}`);
+      
+      const response = NextResponse.redirect(`${origin}${next}`);
+      
+      // Explicitly copy cookies to the redirect response
+      const cookieStore = await cookies();
+      cookieStore.getAll().forEach(({ name, value, options }) => {
+        response.cookies.set(name, value, options);
+      });
+      
+      return response;
     } else {
       console.error('[AUTH-CALLBACK-ERROR] Code exchange failed:', error.message);
-      return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`);
+      const response = NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`);
+      
+      // Copy cookies even on error in case session clear cookies are set
+      const cookieStore = await cookies();
+      cookieStore.getAll().forEach(({ name, value, options }) => {
+        response.cookies.set(name, value, options);
+      });
+      
+      return response;
     }
   }
 

@@ -63,7 +63,7 @@ export default function SignupForm() {
     try {
       const { createClient } = await import('@/lib/supabase/client');
       const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
@@ -71,6 +71,14 @@ export default function SignupForm() {
       });
       if (error) {
         toast.error(error.message);
+        setIsLoading(false);
+        return;
+      }
+      if (data?.url) {
+        console.log('[AUTH-OAUTH] Redirecting browser to Google OAuth consent screen:', data.url);
+        window.location.href = data.url;
+      } else {
+        console.warn('[AUTH-OAUTH-WARNING] signInWithOAuth resolved without a redirect URL.');
         setIsLoading(false);
       }
     } catch (err) {
