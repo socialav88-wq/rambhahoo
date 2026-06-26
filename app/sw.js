@@ -1,5 +1,5 @@
 import { defaultCache } from "@serwist/next/worker";
-import { Serwist } from "serwist";
+import { Serwist, NetworkFirst, NetworkOnly } from "serwist";
 
 // Exclude Next.js prefetch/preflight requests, Supabase calls, and backend API routes from SW caching to save mobile CPU resources
 const customCache = [
@@ -7,7 +7,7 @@ const customCache = [
     matcher({ url }) {
       return url.pathname === "/offline";
     },
-    handler: "NetworkFirst",
+    handler: new NetworkFirst(),
   },
   {
     matcher({ request, url }) {
@@ -21,7 +21,7 @@ const customCache = [
         url.pathname.startsWith("/auth/")
       );
     },
-    handler: "NetworkOnly",
+    handler: new NetworkOnly(),
   },
   ...defaultCache,
 ];
