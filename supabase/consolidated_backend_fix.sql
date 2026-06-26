@@ -26,6 +26,9 @@ CREATE POLICY "Users can create notifications as actor."
   ON public.notifications FOR INSERT 
   WITH CHECK (auth.uid() = actor_id);
 
+-- 3. Add missing content column to notifications table
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS content TEXT;
+
 
 -- ----------------------------------------------------
 -- PART 2: TRIGGER FUNCTIONS SECURITY DEFINER UPGRADES
@@ -213,6 +216,15 @@ CREATE POLICY "Users can delete own events." ON public.events FOR DELETE USING (
 DROP POLICY IF EXISTS "Users can update own comments." ON public.comments;
 CREATE POLICY "Users can update own comments." ON public.comments FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
+-- 4. Enable RLS and correct policies for reports table (reporter_id checking)
+ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own reports" ON public.reports;
+CREATE POLICY "Users can view own reports" ON public.reports FOR SELECT USING (auth.uid() = reporter_id);
+
+DROP POLICY IF EXISTS "Users can insert own reports" ON public.reports;
+CREATE POLICY "Users can insert own reports" ON public.reports FOR INSERT WITH CHECK (auth.uid() = reporter_id);
+
 
 -- ----------------------------------------------------
 -- PART 4: REALTIME REPLICATION ENABLEMENT
@@ -231,5 +243,110 @@ BEGIN
     ) THEN
       EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', tbl);
     END IF;
+  END LOOP;
+END $$;
+
+
+-- ----------------------------------------------------
+-- PART 5: STORAGE BUCKET & MEDIA POLICIES
+-- ----------------------------------------------------
+
+-- Ensure tapri-images storage bucket exists
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('tapri-images', 'tapri-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Public Access policy to tapri-images bucket objects
+DROP POLICY IF EXISTS "Public Access tapri-images" ON storage.objects;
+CREATE POLICY "Public Access tapri-images" 
+ON storage.objects FOR SELECT 
+USING ( bucket_id = 'tapri-images' );
+
+-- Upload policy for authenticated users
+DROP POLICY IF EXISTS "Authenticated users can upload tapri-images" ON storage.objects;
+CREATE POLICY "Authenticated users can upload tapri-images" 
+ON storage.objects FOR INSERT 
+WITH CHECK ( bucket_id = 'tapri-images' AND auth.role() = 'authenticated' );
+
+-- Update policy for owners
+DROP POLICY IF EXISTS "Users can update own tapri-images" ON storage.objects;
+CREATE POLICY "Users can update own tapri-images" 
+ON storage.objects FOR UPDATE 
+USING ( auth.uid() = owner ) WITH CHECK ( bucket_id = 'tapri-images' );
+
+-- Delete policy for owners
+DROP POLICY IF EXISTS "Users can delete own tapri-images" ON storage.objects;
+CREATE POLICY "Users can delete own tapri-images" 
+ON storage.objects FOR DELETE 
+USING ( auth.uid() = owner AND bucket_id = 'tapri-images' );
+
+
+-- ----------------------------------------------------
+-- PART 6: POST TYPE CONSTRAINT CORRECTIVE
+-- ----------------------------------------------------
+
+-- Drop the legacy post type constraint and recreate to include 'event'
+ALTER TABLE public.posts DROP CONSTRAINT IF EXISTS posts_post_type_check;
+ALTER TABLE public.posts ADD CONSTRAINT posts_post_type_check 
+  CHECK (post_type IN ('discussion', 'meme', 'poll', 'event')) NOT VALID;
+
+
+-- ----------------------------------------------------
+-- PART 7: LEGACY TRIGGER CLEANUP
+-- ----------------------------------------------------
+
+-- Clean up any legacy triggers that cause side-effects (e.g. notifications inserts referencing missing columns)
+DO $$
+DECLARE
+  trig RECORD;
+BEGIN
+  -- 1. Clean public.comments triggers (ignore internal constraint triggers)
+  FOR trig IN 
+    SELECT tgname FROM pg_trigger t JOIN pg_class c ON t.tgrelid = c.oid JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE n.nspname = 'public' AND c.relname = 'comments'
+      AND NOT t.tgisinternal
+      AND t.tgname NOT IN ('trigger_comment_count', 'trigger_post_comment_count', 'trigger_comment_count_new')
+  LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.comments', trig.tgname);
+  END LOOP;
+
+  -- 2. Clean public.reactions triggers (ignore internal constraint triggers)
+  FOR trig IN 
+    SELECT tgname FROM pg_trigger t JOIN pg_class c ON t.tgrelid = c.oid JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE n.nspname = 'public' AND c.relname = 'reactions'
+      AND NOT t.tgisinternal
+      AND t.tgname NOT IN ('trigger_reaction_count')
+  LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.reactions', trig.tgname);
+  END LOOP;
+
+  -- 3. Clean public.followers triggers (ignore internal constraint triggers)
+  FOR trig IN 
+    SELECT tgname FROM pg_trigger t JOIN pg_class c ON t.tgrelid = c.oid JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE n.nspname = 'public' AND c.relname = 'followers'
+      AND NOT t.tgisinternal
+      AND t.tgname NOT IN ('trigger_follower_counts')
+  LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.followers', trig.tgname);
+  END LOOP;
+
+  -- 4. Clean public.poll_votes triggers (ignore internal constraint triggers)
+  FOR trig IN 
+    SELECT tgname FROM pg_trigger t JOIN pg_class c ON t.tgrelid = c.oid JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE n.nspname = 'public' AND c.relname = 'poll_votes'
+      AND NOT t.tgisinternal
+      AND t.tgname NOT IN ('trigger_poll_vote_count')
+  LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.poll_votes', trig.tgname);
+  END LOOP;
+
+  -- 5. Clean public.event_rsvps triggers (ignore internal constraint triggers)
+  FOR trig IN 
+    SELECT tgname FROM pg_trigger t JOIN pg_class c ON t.tgrelid = c.oid JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE n.nspname = 'public' AND c.relname = 'event_rsvps'
+      AND NOT t.tgisinternal
+      AND t.tgname NOT IN ('trigger_event_rsvp_count')
+  LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.event_rsvps', trig.tgname);
   END LOOP;
 END $$;

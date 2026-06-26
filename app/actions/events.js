@@ -22,14 +22,16 @@ export async function toggleRsvp(postId, status = 'going') {
       const { error } = await supabase
         .from('event_rsvps')
         .delete()
-        .eq('id', existing.id);
+        .eq('post_id', postId)
+        .eq('user_id', user.id);
       if (error) return { error: error.message };
     } else {
       // Update status
       const { error } = await supabase
         .from('event_rsvps')
         .update({ status })
-        .eq('id', existing.id);
+        .eq('post_id', postId)
+        .eq('user_id', user.id);
       if (error) return { error: error.message };
     }
   } else {
