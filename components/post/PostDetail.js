@@ -49,6 +49,7 @@ export default function PostDetail({ post }) {
   const {
     id, post_type, title, content, image_url, tags = [],
     comment_count = 0, created_at,
+    user_id,
     profiles: author,
     localities: locality,
     reactions_summary = {},
