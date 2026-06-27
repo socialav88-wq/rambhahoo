@@ -215,10 +215,10 @@ export async function deleteComment(commentId, postId) {
   if (!user) return { error: 'Not authenticated' };
 
   try {
-    // Fetch comment owner and associated post owner
+    // Fetch comment owner and associated post owner with unambiguous relation name
     const { data: comment, error: fetchErr } = await supabase
       .from('comments')
-      .select('user_id, posts!inner (user_id)')
+      .select('user_id, posts!comments_post_id_fkey!inner (user_id)')
       .eq('id', commentId)
       .maybeSingle();
 
