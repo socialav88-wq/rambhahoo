@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
-import { Send, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef, useTransition } from 'react';
+import { Send, Loader2, Smile } from 'lucide-react';
 import CommentItem from './CommentItem';
 import Avatar from '@/components/ui/Avatar';
 import Button from '@/components/ui/Button';
@@ -11,6 +11,7 @@ import { addComment, deleteComment } from '@/app/actions/interactions';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
+import EmojiPicker from 'emoji-picker-react';
 
 export default function CommentSection({ postId }) {
   const [newComment, setNewComment] = useState('');
@@ -18,9 +19,47 @@ export default function CommentSection({ postId }) {
   const [comments, setComments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
+  const emojiPickerRef = useRef(null);
   const { user, profile } = useAuthStore();
   const router = useRouter();
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+        setShowEmojiPicker(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleEmojiSelect = (emojiData) => {
+    const emoji = emojiData.emoji;
+    const input = document.getElementById('comment-input');
+    if (!input) {
+      setNewComment(prev => prev + emoji);
+      return;
+    }
+
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const text = input.value;
+    const before = text.substring(0, start);
+    const after = text.substring(end, text.length);
+
+    setNewComment(before + emoji + after);
+    
+    // Refocus and place cursor after inserted emoji
+    setTimeout(() => {
+      input.focus();
+      input.setSelectionRange(start + emoji.length, start + emoji.length);
+    }, 10);
+  };
 
   useEffect(() => {
     async function loadComments() {
@@ -158,8 +197,31 @@ export default function CommentSection({ postId }) {
               className="w-full bg-transparent p-3 min-h-[80px] text-sm text-text-primary placeholder:text-text-dim resize-none focus:outline-none disabled:opacity-70"
             />
             <div className="flex justify-between items-center p-2 bg-bg-elevated/50 border-t border-border">
-              <div className="text-xs text-text-dim px-2">
-                Be respectful
+              <div className="flex items-center gap-2 px-1 relative">
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="p-1 rounded-full text-text-dim hover:text-blue-primary hover:bg-bg-card transition-colors duration-200 cursor-pointer"
+                  title="Insert Emoji"
+                >
+                  <Smile size={16} />
+                </button>
+                <span className="text-xs text-text-dim hidden sm:inline">Be respectful</span>
+
+                {showEmojiPicker && (
+                  <div 
+                    ref={emojiPickerRef}
+                    className="absolute bottom-full left-0 mb-2 z-50 shadow-2xl rounded-2xl border border-border"
+                  >
+                    <EmojiPicker
+                      onEmojiClick={handleEmojiSelect}
+                      width="320px"
+                      height="350px"
+                      lazyLoadEmojis={true}
+                      previewConfig={{ showPreview: false }}
+                    />
+                  </div>
+                )}
               </div>
               <Button 
                 type="submit" 
