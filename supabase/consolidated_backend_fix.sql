@@ -288,7 +288,7 @@ USING ( auth.uid() = owner AND bucket_id = 'tapri-images' );
 -- Drop the legacy post type constraint and recreate to include 'event'
 ALTER TABLE public.posts DROP CONSTRAINT IF EXISTS posts_post_type_check;
 ALTER TABLE public.posts ADD CONSTRAINT posts_post_type_check 
-  CHECK (post_type IN ('discussion', 'meme', 'poll', 'event')) NOT VALID;
+  CHECK (post_type IN ('discussion', 'meme', 'image', 'poll', 'event')) NOT VALID;
 
 
 -- ----------------------------------------------------

@@ -8,6 +8,6 @@
 -- 1. Drop the existing mismatched constraint
 ALTER TABLE public.posts DROP CONSTRAINT IF EXISTS posts_post_type_check;
 
--- 2. Add the corrected constraint to allow discussion, meme, poll, and event
+-- 2. Add the corrected constraint to allow discussion, meme, image, poll, and event
 ALTER TABLE public.posts ADD CONSTRAINT posts_post_type_check 
-  CHECK (post_type IN ('discussion', 'meme', 'poll', 'event')) NOT VALID;
+  CHECK (post_type IN ('discussion', 'meme', 'image', 'poll', 'event')) NOT VALID;
