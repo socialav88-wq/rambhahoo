@@ -128,6 +128,11 @@ export async function createNotificationAndSendPush({ userId, actorId, type, ref
       body = `${name} reacted ${emoji} to your post`;
       const { data: post } = await supabase.from('posts').select('slug').eq('id', referenceId).single();
       if (post?.slug) url = `/post/${post.slug}`;
+    } else if (type === 'COMMENT_REACTION') {
+      const emoji = content || '❤️';
+      body = `${name} reacted ${emoji} to your comment`;
+      const { data: post } = await supabase.from('posts').select('slug').eq('id', referenceId).single();
+      if (post?.slug) url = `/post/${post.slug}`;
     } else if (type === 'POST_COMMENT' || type === 'comment') {
       body = `${name} commented on your post`;
       const { data: post } = await supabase.from('posts').select('slug').eq('id', referenceId).single();

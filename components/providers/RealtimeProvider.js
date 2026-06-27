@@ -146,6 +146,10 @@ export default function RealtimeProvider({ children }) {
             const emoji = notif.content || '❤️';
             message = `${name} reacted ${emoji} to your post`;
             icon = emoji;
+          } else if (notif.type === 'COMMENT_REACTION') {
+            const emoji = notif.content || '❤️';
+            message = `${name} reacted ${emoji} to your comment`;
+            icon = emoji;
           } else if (notif.type === 'POLL_VOTE') {
             message = `${name} voted in your poll`;
             icon = '🗳️';

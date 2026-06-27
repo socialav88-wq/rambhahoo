@@ -10,6 +10,7 @@ import { fetchComments } from '@/app/actions/posts';
 import { addComment, deleteComment } from '@/app/actions/interactions';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { createClient } from '@/lib/supabase/client';
 
 export default function CommentSection({ postId }) {
   const [newComment, setNewComment] = useState('');
@@ -29,6 +30,31 @@ export default function CommentSection({ postId }) {
       setIsLoading(false);
     }
     loadComments();
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`comments-realtime-${postId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` },
+        async (payload) => {
+          const updated = await fetchComments(postId);
+          setComments(updated || []);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reactions' },
+        async (payload) => {
+          const updated = await fetchComments(postId);
+          setComments(updated || []);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [postId]);
 
   const handleSubmit = async (e) => {

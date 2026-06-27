@@ -10,16 +10,38 @@ export async function toggleReaction(postId, commentId, emoji) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Not authenticated' };
 
-  let query = supabase.from('reactions').select('id, emoji').eq('user_id', user.id).eq('emoji', emoji);
+  // Query existing reaction for this user and target (post or comment)
+  let query = supabase.from('reactions').select('id, emoji').eq('user_id', user.id);
   if (postId)    query = query.eq('post_id', postId);
   if (commentId) query = query.eq('comment_id', commentId);
 
   const { data: existing } = await query.maybeSingle();
 
   if (existing) {
-    await supabase.from('reactions').delete().eq('id', existing.id);
-    return { success: true, action: 'removed' };
+    if (existing.emoji === emoji) {
+      // Toggle off: Delete reaction if same emoji is clicked
+      const { error } = await supabase.from('reactions').delete().eq('id', existing.id);
+      if (error) return { error: error.message };
+      return { success: true, action: 'removed' };
+    } else {
+      // Change reaction: Delete old one and insert new one to bypass lack of UPDATE RLS policy
+      const { error: delErr } = await supabase.from('reactions').delete().eq('id', existing.id);
+      if (delErr) return { error: delErr.message };
+
+      const { error: insErr } = await supabase.from('reactions').insert({
+        user_id: user.id,
+        post_id:    postId    || null,
+        comment_id: commentId || null,
+        emoji,
+      });
+      if (insErr) return { error: insErr.message };
+
+      // Trigger notification for reaction change
+      await triggerReactionNotification(supabase, user.id, postId, commentId, emoji);
+      return { success: true, action: 'added', prevEmoji: existing.emoji };
+    }
   } else {
+    // New reaction: Insert record
     const { error } = await supabase.from('reactions').insert({
       user_id: user.id,
       post_id:    postId    || null,
@@ -28,31 +50,56 @@ export async function toggleReaction(postId, commentId, emoji) {
     });
     if (error) return { error: error.message };
 
-    // Generate Notification
+    // Trigger notification
+    await triggerReactionNotification(supabase, user.id, postId, commentId, emoji);
+    return { success: true, action: 'added' };
+  }
+}
+
+// Helper to trigger reaction notifications safely
+async function triggerReactionNotification(supabase, actorId, postId, commentId, emoji) {
+  try {
+    const { createNotificationAndSendPush } = await import('@/app/actions/pushActions');
+
     if (postId) {
-      const { data: post } = await supabase.from('posts').select('user_id').eq('id', postId).single();
-      if (post && post.user_id !== user.id) {
-        const { createNotificationAndSendPush } = await import('@/app/actions/pushActions');
+      const { data: post } = await supabase.from('posts').select('user_id').eq('id', postId).maybeSingle();
+      if (post && post.user_id !== actorId) {
         if (emoji === '👍') {
           await createNotificationAndSendPush({
             userId: post.user_id,
-            actorId: user.id,
+            actorId,
             type: 'POST_LIKE',
             referenceId: postId
           });
         } else {
           await createNotificationAndSendPush({
             userId: post.user_id,
-            actorId: user.id,
+            actorId,
             type: 'POST_REACTION',
             referenceId: postId,
             content: emoji
           });
         }
       }
-    }
+    } else if (commentId) {
+      const { data: comment } = await supabase
+        .from('comments')
+        .select('user_id, post_id')
+        .eq('id', commentId)
+        .maybeSingle();
 
-    return { success: true, action: 'added' };
+      if (comment && comment.user_id !== actorId) {
+        await createNotificationAndSendPush({
+          userId: comment.user_id,
+          actorId,
+          type: 'COMMENT_REACTION',
+          referenceId: comment.post_id, // post_id for redirect reference
+          content: emoji
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[TRIGGER-REACTION-NOTIFICATION-ERROR]', err);
   }
 }
 
