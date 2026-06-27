@@ -1,7 +1,7 @@
 import { updateSession } from '@/lib/supabase/middleware';
 import { NextResponse } from 'next/server';
 
-export async function proxy(request) {
+export async function middleware(request) {
   const url = request.nextUrl.clone();
   const host = request.headers.get('host');
   
