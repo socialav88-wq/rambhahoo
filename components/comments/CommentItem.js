@@ -10,7 +10,7 @@ import { useAuthStore } from '@/store/authStore';
 import { toggleReaction } from '@/app/actions/interactions';
 import toast from 'react-hot-toast';
 
-export default function CommentItem({ comment, onReply, onDelete, isReply = false }) {
+export default function CommentItem({ comment, onReply, onDelete, isReply = false, postOwnerId }) {
   const [showOptions, setShowOptions] = useState(false);
   const { user } = useAuthStore();
   
@@ -55,7 +55,7 @@ export default function CommentItem({ comment, onReply, onDelete, isReply = fals
                     
                     {showOptions && (
                       <div className="absolute right-0 top-full mt-1 w-32 bg-bg-card border border-border rounded-lg shadow-md z-10 py-1 animate-fade-in">
-                        {user?.id === author?.id && (
+                        {(user?.id === author?.id || user?.id === postOwnerId) && (
                           <button 
                             onClick={() => onDelete && onDelete(id)}
                             className="w-full text-left px-3 py-1.5 text-xs text-accent-red hover:bg-bg-card-hover flex items-center gap-2"
@@ -99,7 +99,7 @@ export default function CommentItem({ comment, onReply, onDelete, isReply = fals
           <div className="mt-2 relative">
             <div className="absolute left-[-26px] top-0 bottom-6 w-px bg-border-light" />
             {comment.replies.map(reply => (
-              <CommentItem key={reply.id} comment={reply} isReply onReply={onReply} onDelete={onDelete} />
+              <CommentItem key={reply.id} comment={reply} isReply onReply={onReply} onDelete={onDelete} postOwnerId={postOwnerId} />
             ))}
           </div>
         )}

@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
 import EmojiPicker from 'emoji-picker-react';
 
-export default function CommentSection({ postId }) {
+export default function CommentSection({ postId, postOwnerId }) {
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [comments, setComments] = useState([]);
@@ -251,6 +251,7 @@ export default function CommentSection({ postId }) {
               comment={comment} 
               onReply={handleReply} 
               onDelete={handleDelete}
+              postOwnerId={postOwnerId}
             />
           ))
         ) : (

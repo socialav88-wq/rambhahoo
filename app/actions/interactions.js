@@ -215,17 +215,34 @@ export async function deleteComment(commentId, postId) {
   if (!user) return { error: 'Not authenticated' };
 
   try {
+    // Fetch comment owner and associated post owner
+    const { data: comment, error: fetchErr } = await supabase
+      .from('comments')
+      .select('user_id, posts!inner (user_id)')
+      .eq('id', commentId)
+      .maybeSingle();
+
+    if (fetchErr) return { error: fetchErr.message };
+    if (!comment) return { error: 'Comment not found' };
+
+    const isCommentAuthor = comment.user_id === user.id;
+    const isPostAuthor = comment.posts?.user_id === user.id;
+
+    if (!isCommentAuthor && !isPostAuthor) {
+      return { error: 'You do not have permission to delete this comment' };
+    }
+
     const { error } = await supabase
       .from('comments')
       .delete()
-      .eq('id', commentId)
-      .eq('user_id', user.id);
+      .eq('id', commentId);
     
     if (error) return { error: error.message };
     
     revalidatePath(`/post/${postId}`);
     return { success: true };
   } catch (err) {
+    console.error('[DELETE-COMMENT-ERROR]', err);
     return { error: 'Failed to delete comment' };
   }
 }

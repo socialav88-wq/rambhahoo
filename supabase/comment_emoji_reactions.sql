@@ -36,3 +36,16 @@ ALTER TABLE public.notifications ADD CONSTRAINT notifications_type_check CHECK (
   'POST_LIKE', 'POST_REACTION', 'POST_COMMENT', 'COMMENT_REPLY', 'COMMENT_REACTION',
   'POLL_VOTE', 'CIRCLE_ADD', 'MENTION', 'POST_REPORT', 'SYSTEM', 'EVENT_RSVP'
 ));
+
+-- 6. Update Comments DELETE RLS policy to allow comment creator OR post owner to delete comments
+DROP POLICY IF EXISTS "Users can delete own comments" ON public.comments;
+CREATE POLICY "Users can delete own comments"
+  ON public.comments FOR DELETE
+  USING (
+    auth.uid() = user_id OR
+    EXISTS (
+      SELECT 1 FROM public.posts
+      WHERE posts.id = comments.post_id
+      AND posts.user_id = auth.uid()
+    )
+  );

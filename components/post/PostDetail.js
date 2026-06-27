@@ -184,7 +184,7 @@ export default function PostDetail({ post }) {
         </div>
 
         {/* Comment Section */}
-        <CommentSection postId={id} />
+        <CommentSection postId={id} postOwnerId={user_id} />
       </div>
     </article>
   );
