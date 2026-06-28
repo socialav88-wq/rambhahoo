@@ -15,7 +15,7 @@ export default function PublicLandingLayout({ children }) {
         </Link>
         <div className="flex items-center gap-6">
           <Link href="/about" className="text-sm font-semibold text-gray-700 hover:text-[#4F46E5] hidden md:block transition-colors">About Us</Link>
-          <div className="flex gap-3">
+          <div className="hidden sm:flex gap-3">
             <Link href="/login">
               <Button variant="outline" className="px-6 rounded-full border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
                 Log in

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 export default function FeedFilters({ active = 'hot', onChange }) {
   return (
-    <div className="flex w-full gap-1 p-1 bg-bg-card rounded-xl border border-border shadow-sm">
+    <div className="flex w-full gap-1 p-1 bg-bg-card rounded-xl border border-border shadow-sm overflow-x-auto no-scrollbar shrink-0">
       {FEED_FILTERS.map((filter) => (
         <button
           key={filter.value}
