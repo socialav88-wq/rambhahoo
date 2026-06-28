@@ -139,9 +139,9 @@ export default function AdviceFeedContainer({ initialPosts, user }) {
         </div>
 
         {/* Dashboard Actions and Filters */}
-        <div className="bg-bg-card border border-border rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div className="bg-bg-card border border-border rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row flex-wrap gap-4 items-center justify-between">
           {/* Tabs */}
-          <div className="flex bg-bg-elevated p-1 rounded-xl w-full sm:w-auto">
+          <div className="flex bg-bg-elevated p-1 rounded-xl w-full sm:w-auto shrink-0">
             <button
               onClick={() => setFilter('new')}
               className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
@@ -176,7 +176,7 @@ export default function AdviceFeedContainer({ initialPosts, user }) {
             )}
           </div>
 
-          <div className="flex gap-2 w-full sm:w-auto items-center">
+          <div className="flex gap-2 w-full sm:w-auto items-center shrink-0">
             {/* Locality Selector */}
             <select
               value={locality}
