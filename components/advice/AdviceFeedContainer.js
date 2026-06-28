@@ -8,16 +8,30 @@ import { FeedSkeleton } from '@/components/ui/Skeleton';
 import Button from '@/components/ui/Button';
 import { HelpCircle, ChevronRight, MessageSquareHeart, Check } from 'lucide-react';
 import { LOCALITIES } from '@/lib/constants';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function AdviceFeedContainer({ initialPosts, user }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [filter, setFilter] = useState('new');
-  const [category, setCategory] = useState(null);
   const [locality, setLocality] = useState('');
   const [posts, setPosts] = useState(initialPosts || []);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initialPosts ? initialPosts.length >= 10 : true);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  const category = searchParams.get('category') || null;
+
+  const setCategory = (catVal) => {
+    const params = new URLSearchParams(window.location.search);
+    if (catVal) {
+      params.set('category', catVal);
+    } else {
+      params.delete('category');
+    }
+    router.push(`/advice?${params.toString()}`);
+  };
 
   const loadMoreRef = useRef(null);
 
@@ -96,45 +110,7 @@ export default function AdviceFeedContainer({ initialPosts, user }) {
   }, [hasMore, loading, loadingMore, page, filter, category, locality]);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6">
-      {/* Sidebar: Categories Selection (Desktop) */}
-      <aside className="hidden lg:block w-64 shrink-0 space-y-4">
-        <div className="bg-bg-card rounded-2xl border border-border p-4 shadow-sm space-y-1">
-          <div className="px-2 mb-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-text-dim">Categories</h3>
-          </div>
-
-          <button
-            onClick={() => setCategory(null)}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-              category === null
-                ? 'bg-blue-primary/10 text-blue-primary'
-                : 'text-text-muted hover:bg-bg-card-hover hover:text-text-primary'
-            }`}
-          >
-            <span>🌐</span>
-            <span>All Categories</span>
-          </button>
-
-          {categories.map((cat) => (
-            <button
-              key={cat.value}
-              onClick={() => setCategory(cat.value)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                category === cat.value
-                  ? 'bg-blue-primary/10 text-blue-primary'
-                  : 'text-text-muted hover:bg-bg-card-hover hover:text-text-primary'
-              }`}
-            >
-              <span>{cat.emoji}</span>
-              <span>{cat.label}</span>
-            </button>
-          ))}
-        </div>
-      </aside>
-
-      {/* Main Feed Content */}
-      <div className="flex-1 min-w-0 space-y-4">
+    <div className="space-y-4 w-full">
         {/* Mobile: Horizontal Categories swipe */}
         <div className="lg:hidden flex gap-2 overflow-x-auto pb-2 no-scrollbar scroll-smooth">
           <button
@@ -265,7 +241,6 @@ export default function AdviceFeedContainer({ initialPosts, user }) {
             )}
           </div>
         )}
-      </div>
     </div>
   );
 }
