@@ -36,10 +36,10 @@ export default async function Leaderboard() {
             </div>
             <Avatar src={profile.avatar_url} name={profile.display_name} size="sm" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-text-primary truncate group-hover:text-blue-primary transition-colors">
+              <p className="text-sm font-semibold text-text-primary group-hover:text-blue-primary transition-colors break-words">
                 {profile.display_name || profile.username}
               </p>
-              <p className="text-xs text-text-muted truncate">
+              <p className="text-xs text-text-muted break-all">
                 @{profile.username}
               </p>
             </div>
