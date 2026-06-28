@@ -36,12 +36,14 @@ export default async function Leaderboard() {
             </div>
             <Avatar src={profile.avatar_url} name={profile.display_name} size="sm" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-text-primary group-hover:text-blue-primary transition-colors break-words">
-                {profile.display_name || profile.username}
-              </p>
-              <p className="text-xs text-text-muted break-all">
-                @{profile.username}
-              </p>
+              <div className="flex items-baseline gap-1.5 flex-wrap">
+                <span className="text-sm font-semibold text-text-primary group-hover:text-blue-primary transition-colors">
+                  {profile.display_name || profile.username}
+                </span>
+                <span className="text-xs text-text-muted font-normal">
+                  @{profile.username}
+                </span>
+              </div>
             </div>
             <div className="text-right shrink-0">
               <Badge variant="primary" className="bg-blue-primary/10 text-blue-primary border-0 font-bold px-2 py-0.5">
