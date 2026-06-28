@@ -21,11 +21,11 @@ export default function TrendingPage() {
         </h2>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-5">
           <Leaderboard />
         </div>
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-7">
           <TrendingTopics />
         </div>
       </div>
