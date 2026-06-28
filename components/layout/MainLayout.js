@@ -10,7 +10,7 @@ export default function MainLayout({ children }) {
   return (
     <div className="min-h-screen bg-bg-primary flex flex-col">
       <Navbar />
-      <div className="mx-auto max-w-7xl px-4 py-4 flex-1 w-full">
+      <div className="mx-auto max-w-[1440px] px-4 py-4 flex-1 w-full">
         <div className="flex gap-6">
           <LeftSidebar />
           <main className="flex-1 min-w-0 pb-20 md:pb-4">

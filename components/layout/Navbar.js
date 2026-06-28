@@ -24,7 +24,7 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-white/90 backdrop-blur-xl shadow-sm">
-      <div className="mx-auto max-w-7xl px-4">
+      <div className="mx-auto max-w-[1440px] px-4">
         <div className="flex h-14 items-center justify-between gap-4">
           {/* Logo */}
           <Link href="/" aria-label="Home" className="flex items-center gap-2 shrink-0">

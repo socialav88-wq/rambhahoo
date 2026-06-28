@@ -5,7 +5,7 @@ export default function Footer() {
 
   return (
     <footer className="bg-bg-primary border-t border-border mt-auto w-full pt-10 pb-6 px-4 md:px-8 z-10 relative">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 hide-in-pwa">
+      <div className="max-w-[1440px] mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 hide-in-pwa">
         <div className="col-span-1 sm:col-span-2 md:col-span-1">
           <h2 className="text-xl font-bold font-[family-name:var(--font-poppins)] text-text-primary mb-4">Rambhahoo</h2>
           <p className="text-sm text-text-muted leading-relaxed">
@@ -47,7 +47,7 @@ export default function Footer() {
         </div>
       </div>
       
-      <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-border flex flex-col md:flex-row items-center justify-between text-xs text-text-dim">
+      <div className="max-w-[1440px] mx-auto mt-12 pt-6 border-t border-border flex flex-col md:flex-row items-center justify-between text-xs text-text-dim">
         <p>© {currentYear} Rambhahoo. All rights reserved.</p>
         <div className="flex items-center gap-6 mt-4 md:mt-0">
           <a href="https://twitter.com/rambhahoo" target="_blank" rel="noopener noreferrer" className="hover:text-blue-primary transition-colors">Twitter</a>
