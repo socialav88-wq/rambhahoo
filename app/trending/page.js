@@ -21,13 +21,12 @@ export default function TrendingPage() {
         </h2>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-5">
-          <Leaderboard />
-        </div>
-        <div className="lg:col-span-7">
-          <TrendingTopics />
-        </div>
+      {/* Top Neighbors Carousel - Full Width */}
+      <Leaderboard />
+
+      {/* Trending Topics Feed - Below Carousel */}
+      <div className="mt-4">
+        <TrendingTopics />
       </div>
     </div>
   );
