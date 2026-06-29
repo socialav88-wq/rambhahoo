@@ -138,3 +138,56 @@ body {
     display: none !important;
   }
 }
+
+/* ===== SETTINGS & CUSTOMIZATION OVERRIDES ===== */
+
+/* 1. Dark Mode Color Variables */
+.dark {
+  --color-bg-primary: #0B0F19; /* Deep slate */
+  --color-bg-card: #151D30; /* Dark Card background */
+  --color-bg-card-hover: #1E2942;
+  --color-bg-elevated: #101626;
+  --color-text-primary: #F3F4F6;
+  --color-text-muted: #9CA3AF;
+  --color-text-dim: #6B7280;
+  --color-border: #242F47;
+  --color-border-light: #162238;
+}
+
+/* 2. Custom Font Size Scaling */
+html.font-sm {
+  font-size: 14px !important;
+}
+html.font-md {
+  font-size: 16px !important;
+}
+html.font-lg {
+  font-size: 18px !important;
+}
+
+/* 3. Animations Toggle Override */
+.no-animations * {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* 4. Compact Layout Mode Adjustments */
+.compact-mode .py-4,
+.compact-mode .py-5,
+.compact-mode .py-6 {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+.compact-mode .p-4,
+.compact-mode .p-5,
+.compact-mode .p-6 {
+  padding: 0.75rem !important;
+}
+.compact-mode .gap-6,
+.compact-mode .gap-5 {
+  gap: 0.75rem !important;
+}
+.compact-mode .space-y-6 > :not([hidden]) ~ :not([hidden]),
+.compact-mode .space-y-5 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.75rem !important;
+}

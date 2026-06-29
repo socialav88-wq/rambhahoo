@@ -6,10 +6,12 @@ import ToastContainer from '@/components/ui/Toast';
 import PWAInstallPrompt from '@/components/ui/PWAInstallPrompt';
 import Footer from './Footer';
 import { Suspense } from 'react';
+import SettingsBootstrapper from '@/components/settings/SettingsBootstrapper';
 
 export default function MainLayout({ children }) {
   return (
-    <div className="min-h-screen bg-bg-primary flex flex-col">
+    <div className="min-h-screen bg-bg-primary flex flex-col transition-colors duration-150">
+      <SettingsBootstrapper />
       <Navbar />
       <div className="mx-auto max-w-[1440px] px-4 py-4 flex-1 w-full">
         <div className="flex gap-6">

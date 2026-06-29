@@ -3,272 +3,109 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import { updateProfile } from '@/app/actions/profile';
-import Avatar from '@/components/ui/Avatar';
-import Button from '@/components/ui/Button';
-import { User, Image as ImageIcon, Camera } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import SettingsSidebar from '@/components/settings/SettingsSidebar';
+import SettingsPanels from '@/components/settings/SettingsPanels';
+import { Sliders } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { usePushNotifications } from '@/components/providers/PushNotificationProvider';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, profile } = useAuthStore();
-  const { isSupported, isSubscribed, permissionStatus, isSubscribing, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
+  const { user, profile, isLoading: authLoading } = useAuthStore();
   
-  const [displayName, setDisplayName] = useState('');
-  const [username, setUsername] = useState('');
-  const [bio, setBio] = useState('');
-  const [avatarFile, setAvatarFile] = useState(null);
-  const [avatarPreview, setAvatarPreview] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState('profile');
+  const [userMetadata, setUserMetadata] = useState({});
+  const [loadingMeta, setLoadingMeta] = useState(true);
 
+  // Auth protection
   useEffect(() => {
-    if (!user) {
+    if (!authLoading && !user) {
       router.push('/login');
     }
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
+  // Load Supabase user metadata
   useEffect(() => {
-    if (profile) {
-      setDisplayName(profile.display_name || '');
-      setUsername(profile.username || '');
-      setBio(profile.bio || '');
-      setAvatarPreview(profile.avatar_url || '');
-    }
-  }, [profile]);
-
-  const handleAvatarChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setAvatarFile(file);
-      setAvatarPreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    let finalAvatarUrl = profile.avatar_url;
-
-    // Client-side image upload
-    if (avatarFile) {
+    async function loadUserMetadata() {
+      if (!user) return;
       try {
-        let fileToUpload = avatarFile;
-        
-        // Automatically compress if > 2MB
-        if (avatarFile.size > 2 * 1024 * 1024) {
-          const { default: imageCompression } = await import('browser-image-compression');
-          fileToUpload = await imageCompression(avatarFile, {
-            maxSizeMB: 1.5,
-            maxWidthOrHeight: 800,
-            useWebWorker: true,
-          });
-        }
-
         const supabase = createClient();
-        const fileExt = fileToUpload.name.split('.').pop() || 'jpg';
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        const filePath = `${user.id}/avatars/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('tapri-images')
-          .upload(filePath, fileToUpload, { contentType: fileToUpload.type });
-
-        if (uploadError) {
-          toast.error('Failed to upload image: ' + uploadError.message);
-          setIsSubmitting(false);
-          return;
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser?.user_metadata) {
+          setUserMetadata(authUser.user_metadata);
         }
-
-        const { data } = supabase.storage.from('tapri-images').getPublicUrl(filePath);
-        finalAvatarUrl = data.publicUrl;
       } catch (err) {
-        toast.error('Upload error: ' + err.message);
-        setIsSubmitting(false);
-        return;
+        console.warn('Failed to load settings metadata:', err.message);
+      } finally {
+        setLoadingMeta(false);
       }
     }
+    loadUserMetadata();
+  }, [user]);
 
-    const formData = new FormData();
-    formData.append('displayName', displayName);
-    formData.append('username', username);
-    formData.append('bio', bio);
-    if (finalAvatarUrl) {
-      formData.append('avatarUrl', finalAvatarUrl);
+  // Persist metadata to Supabase auth details
+  const handleSaveMetadata = async (updatedData) => {
+    try {
+      const supabase = createClient();
+      const mergedMeta = {
+        ...userMetadata,
+        ...updatedData
+      };
+      
+      // Update local state immediately for responsive feedback
+      setUserMetadata(mergedMeta);
+      
+      const { error } = await supabase.auth.updateUser({
+        data: mergedMeta
+      });
+      
+      if (error) throw error;
+    } catch (err) {
+      toast.error('Settings backup failed: ' + err.message);
     }
-    
-    const result = await updateProfile(formData);
-
-    if (result?.error) {
-      toast.error(result.error);
-    } else {
-      toast.success('Profile updated successfully!');
-      // Refresh profile in store after update
-      try {
-        const supabase = createClient();
-        const { data: updatedProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        if (updatedProfile) {
-          useAuthStore.getState().setProfile(updatedProfile);
-        }
-      } catch (refreshErr) {
-        console.warn('Could not refresh profile after update:', refreshErr.message);
-      }
-      router.push(`/profile/${profile.username}`);
-    }
-    setIsSubmitting(false);
   };
+
+  if (authLoading || loadingMeta) {
+    return (
+      <div className="max-w-5xl mx-auto py-6 px-4 animate-pulse">
+        <div className="h-8 bg-bg-card rounded-lg w-48 mb-6" />
+        <div className="flex flex-col md:flex-row gap-6">
+          <div className="w-full md:w-64 h-80 bg-bg-card rounded-2xl shrink-0" />
+          <div className="flex-1 h-96 bg-bg-card rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
 
   if (!user || !profile) return null;
 
   return (
-    <div className="max-w-2xl mx-auto mt-6">
-      <div className="bg-bg-card rounded-2xl border border-border p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
-          <User className="text-blue-primary" size={24} />
-          <h1 className="text-2xl font-bold font-[family-name:var(--font-poppins)] text-text-primary">
-            Edit Profile
+    <div className="max-w-5xl mx-auto py-4 md:py-6 px-2 sm:px-4">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
+        <div className="p-2 bg-blue-primary/10 text-blue-primary rounded-xl">
+          <Sliders size={22} />
+        </div>
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold font-[family-name:var(--font-poppins)] text-text-primary tracking-tight">
+            Settings & Customization
           </h1>
+          <p className="text-xs text-text-dim mt-0.5">Manage your preferences, location metrics, and account details</p>
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Avatar Upload */}
-          <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-border">
-            <div className="relative group">
-              <Avatar src={avatarPreview} name={displayName || profile.username} size="lg" className="w-24 h-24 text-3xl" />
-              <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                <Camera size={24} />
-                <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" onChange={handleAvatarChange} />
-              </label>
-            </div>
-            <div className="text-center sm:text-left">
-              <h3 className="font-medium text-text-primary mb-1">Profile Picture</h3>
-              <p className="text-sm text-text-dim mb-3">JPG, GIF or PNG. 2MB max.</p>
-              <label className="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-bg-elevated hover:bg-border border border-border rounded-lg text-sm font-medium cursor-pointer transition-colors">
-                <ImageIcon size={16} />
-                Upload New Image
-                <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" onChange={handleAvatarChange} />
-              </label>
-            </div>
-          </div>
-
-          {/* Details */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-1.5">
-                Display Name
-              </label>
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                maxLength={50}
-                className="w-full bg-bg-elevated border border-border rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-dim focus:outline-none focus:border-blue-primary focus:ring-1 focus:ring-blue-primary/50 transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-1.5">
-                Username
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                maxLength={20}
-                minLength={3}
-                required
-                className="w-full bg-bg-elevated border border-border rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-dim focus:outline-none focus:border-blue-primary focus:ring-1 focus:ring-blue-primary/50 transition-all"
-              />
-              <p className="text-xs text-text-dim mt-1.5">
-                Only lowercase letters, numbers, and underscores allowed (3-20 characters).
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-1.5">
-                Bio
-              </label>
-              <textarea
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                maxLength={160}
-                rows={3}
-                placeholder="Tell the community a little about yourself..."
-                className="w-full bg-bg-elevated border border-border rounded-xl px-4 py-3 text-text-primary placeholder:text-text-dim focus:outline-none focus:border-blue-primary focus:ring-1 focus:ring-blue-primary/50 transition-all resize-none"
-              />
-              <div className="text-right text-xs text-text-dim mt-1">
-                {bio.length}/160
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="pt-4 flex justify-end gap-3">
-            <Button type="button" variant="ghost" onClick={() => router.back()}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={isSubmitting}>
-              Save Changes
-            </Button>
-          </div>
-        </form>
-
-        {/* Notification Settings */}
-        <div className="mt-8 pt-6 border-t border-border animate-fade-in">
-          <h3 className="text-lg font-semibold text-text-primary mb-2 font-[family-name:var(--font-poppins)]">
-            Notification Settings
-          </h3>
-          <p className="text-sm text-text-dim mb-4">
-            Receive real-time push notifications on this device when other users interact with your posts or profile.
-          </p>
-          
-          {!isSupported ? (
-            <div className="p-4 bg-bg-elevated rounded-xl border border-border text-sm text-text-dim">
-              Push notifications are not supported by your browser or device.
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-bg-elevated rounded-xl border border-border">
-              <div>
-                <p className="font-medium text-text-primary text-sm sm:text-base">
-                  {isSubscribed ? 'Push Notifications Enabled' : 'Push Notifications Disabled'}
-                </p>
-                <p className="text-xs text-text-dim mt-0.5">
-                  Status: {permissionStatus === 'default' ? 'Not yet requested' : permissionStatus === 'denied' ? 'Blocked (requires browser settings reset)' : 'Permission granted'}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant={isSubscribed ? 'outline' : 'default'}
-                loading={isSubscribing}
-                onClick={isSubscribed ? unsubscribeFromPush : subscribeToPush}
-                className="w-full sm:w-auto shrink-0"
-              >
-                {isSubscribed ? 'Disable' : 'Enable'}
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Log Out Section */}
-        <div className="mt-8 pt-6 border-t border-border">
-          <h3 className="text-lg font-semibold text-text-primary mb-4 font-[family-name:var(--font-poppins)]">Account Actions</h3>
-          <Button 
-            variant="outline" 
-            className="w-full sm:w-auto text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
-            onClick={async () => {
-              const { logout } = await import('@/app/actions/auth');
-              await logout();
-              router.push('/login');
-            }}
-          >
-            Log Out
-          </Button>
+      {/* Settings Grid Layout */}
+      <div className="flex flex-col md:flex-row gap-6 items-start">
+        {/* Sidebar Nav */}
+        <SettingsSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+        
+        {/* Main Content Panels */}
+        <div className="flex-1 w-full min-w-0">
+          <SettingsPanels 
+            activeTab={activeTab} 
+            userMetadata={userMetadata} 
+            onSaveMetadata={handleSaveMetadata} 
+          />
         </div>
       </div>
     </div>
