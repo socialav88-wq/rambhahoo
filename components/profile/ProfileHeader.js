@@ -148,7 +148,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }) {
         </div>
         
         {/* Premium Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full pt-6 border-t border-border-light">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 w-full pt-6 border-t border-border-light">
           <div className="bg-bg-elevated/50 rounded-2xl p-4 text-center hover:bg-bg-elevated transition-colors cursor-pointer">
             <span className="block font-black text-2xl text-text-primary mb-1">{profile.posts_count || 0}</span>
             <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Posts</span>
@@ -158,10 +158,16 @@ export default function ProfileHeader({ profile, isOwnProfile = false }) {
             <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Reputation</span>
           </div>
           <div className="bg-bg-elevated/50 rounded-2xl p-4 text-center hover:bg-bg-elevated transition-colors cursor-pointer">
+            <span className="block font-black text-2xl text-text-primary mb-1">
+              {profile.joined_locality_ids?.length || (profile.locality_id ? 1 : 0)}
+            </span>
+            <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Localities</span>
+          </div>
+          <div className="bg-bg-elevated/50 rounded-2xl p-4 text-center hover:bg-bg-elevated transition-colors cursor-pointer">
             <span className="block font-black text-2xl text-text-primary mb-1">{followersCount}</span>
             <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Circled By</span>
           </div>
-          <div className="bg-bg-elevated/50 rounded-2xl p-4 text-center hover:bg-bg-elevated transition-colors cursor-pointer">
+          <div className="bg-bg-elevated/50 rounded-2xl p-4 text-center hover:bg-bg-elevated transition-colors cursor-pointer col-span-2 sm:col-span-1">
             <span className="block font-black text-2xl text-text-primary mb-1">{profile.following_count || 0}</span>
             <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">In My Circle</span>
           </div>

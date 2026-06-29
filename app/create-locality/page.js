@@ -49,7 +49,22 @@ export default function CreateLocalityPage() {
       if (error) throw error;
 
       // Auto join the locality the user just created
-      await supabase.from('profiles').update({ locality_id: data.id }).eq('id', user.id);
+      const { data: currentProfile } = await supabase
+        .from('profiles')
+        .select('joined_locality_ids')
+        .eq('id', user.id)
+        .single();
+
+      let updatePayload = { locality_id: data.id };
+      
+      if (currentProfile && 'joined_locality_ids' in currentProfile) {
+        const currentIds = currentProfile.joined_locality_ids || [];
+        if (!currentIds.includes(data.id)) {
+          updatePayload.joined_locality_ids = [...currentIds, data.id];
+        }
+      }
+
+      await supabase.from('profiles').update(updatePayload).eq('id', user.id);
 
       router.push(`/${slug}`);
     } catch (error) {

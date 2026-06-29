@@ -710,13 +710,28 @@ function LocationPanel({ settings, profile, user }) {
         }
       }
 
+      const { data: currentProfile } = await supabase
+        .from('profiles')
+        .select('joined_locality_ids')
+        .eq('id', user.id)
+        .single();
+
+      let updatePayload = {
+        city: city,
+        locality_id: resolvedLocalityId,
+        updated_at: new Date().toISOString()
+      };
+
+      if (currentProfile && 'joined_locality_ids' in currentProfile) {
+        const currentIds = currentProfile.joined_locality_ids || [];
+        if (resolvedLocalityId && !currentIds.includes(resolvedLocalityId)) {
+          updatePayload.joined_locality_ids = [...currentIds, resolvedLocalityId];
+        }
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          city: city,
-          locality_id: resolvedLocalityId,
-          updated_at: new Date().toISOString()
-        })
+        .update(updatePayload)
         .eq('id', user.id);
 
       if (error) throw error;

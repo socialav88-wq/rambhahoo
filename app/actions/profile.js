@@ -62,9 +62,24 @@ export async function joinLocality(localitySlug) {
 
     const localityId = loc.id;
 
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('locality_id, joined_locality_ids')
+      .eq('id', user.id)
+      .single();
+
+    let updatePayload = { locality_id: localityId };
+    
+    if (currentProfile && 'joined_locality_ids' in currentProfile) {
+      const currentIds = currentProfile.joined_locality_ids || [];
+      if (!currentIds.includes(localityId)) {
+        updatePayload.joined_locality_ids = [...currentIds, localityId];
+      }
+    }
+
     const { error } = await supabase
       .from('profiles')
-      .update({ locality_id: localityId })
+      .update(updatePayload)
       .eq('id', user.id);
     
     if (error) return { error: error.message };
