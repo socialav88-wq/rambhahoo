@@ -152,12 +152,12 @@ export default function Leaderboard() {
                   {following ? (
                     <>
                       <UserCheck size={12} />
-                      <span>Following</span>
+                      <span>Added</span>
                     </>
                   ) : (
                     <>
                       <UserPlus size={12} />
-                      <span>Follow</span>
+                      <span>Add to circle</span>
                     </>
                   )}
                 </button>
