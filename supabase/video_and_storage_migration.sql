@@ -5,6 +5,11 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('RAMBHAHOO', 'RAMBHAHOO', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
+-- Drop policies if they already exist to avoid name conflicts
+DROP POLICY IF EXISTS "Public access to RAMBHAHOO" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload to RAMBHAHOO" ON storage.objects;
+DROP POLICY IF EXISTS "Users can manage own files in RAMBHAHOO" ON storage.objects;
+
 -- Allow public read access to all files in RAMBHAHOO
 CREATE POLICY "Public access to RAMBHAHOO" 
 ON storage.objects FOR SELECT 
