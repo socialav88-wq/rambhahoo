@@ -396,6 +396,8 @@ export async function createPost(formData) {
   const localitySlug = formData.get('locality');
   const tagsStr      = formData.get('tags') || '';
   const image_url    = formData.get('image_url') || null;
+  const video_url    = formData.get('video_url') || null;
+  const video_metadata_raw = formData.get('video_metadata');
   const poll_options_raw = formData.get('poll_options');
   const location_lat = formData.get('location_lat');
   const location_lng = formData.get('location_lng');
@@ -403,12 +405,22 @@ export async function createPost(formData) {
   const location_name = formData.get('location_name');
   const category     = formData.get('category')?.trim() || 'discussion';
 
+  let video_metadata = null;
+  if (video_metadata_raw) {
+    try {
+      video_metadata = JSON.parse(video_metadata_raw);
+    } catch (e) {
+      console.error('[SERVER:posts] Failed to parse video_metadata:', e.message);
+    }
+  }
+
   console.log('[SERVER:posts] FormData received:', {
     title,
     post_type,
     localitySlug: localitySlug || 'none',
     tags: tagsStr || 'none',
     has_image_url: !!image_url,
+    has_video_url: !!video_url,
     has_poll_options: !!poll_options_raw,
     has_event_date: !!event_date,
     content_length: content.length,
@@ -419,10 +431,10 @@ export async function createPost(formData) {
     return { error: 'Title is required.' };
   }
 
-  const validTypes = ['discussion', 'image', 'poll', 'event'];
+  const validTypes = ['discussion', 'image', 'poll', 'event', 'video'];
   if (!validTypes.includes(post_type)) {
     tParse.fail(`invalid post_type: ${post_type}`);
-    return { error: `Invalid post type "${post_type}". Must be discussion, image, poll, or event.` };
+    return { error: `Invalid post type "${post_type}". Must be discussion, image, video, poll, or event.` };
   }
   tParse.end(`title="${title}" type=${post_type}`);
 
@@ -470,6 +482,8 @@ export async function createPost(formData) {
     content,
     post_type:   dbPostType,
     image_url,
+    video_url,
+    video_metadata,
     locality_id,
     location,
     tags,

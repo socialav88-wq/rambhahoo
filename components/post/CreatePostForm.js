@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Image as ImageIcon, BarChart3, MapPin, X, MessageSquare, CheckCircle2, Calendar } from 'lucide-react';
+import { Image as ImageIcon, BarChart3, MapPin, X, MessageSquare, CheckCircle2, Calendar, Video } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { POST_TYPES, LOCALITIES } from '@/lib/constants';
 import { useAuthStore } from '@/store/authStore';
@@ -76,6 +76,105 @@ function getSupabaseClient() {
   }
 }
 
+function uploadToSupabaseWithProgress(bucket, path, file, token, onProgress, abortSignal) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vtszkowjjwkdxxgufgie.supabase.co';
+    const url = `${supabaseUrl}/storage/v1/object/${bucket}/${path}`;
+    
+    xhr.open('POST', url, true);
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    xhr.setRequestHeader('apikey', anonKey);
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    
+    if (file.type) {
+      xhr.setRequestHeader('Content-Type', file.type);
+    }
+
+    if (abortSignal) {
+      abortSignal.addEventListener('abort', () => {
+        xhr.abort();
+        reject(new DOMException('Upload aborted', 'AbortError'));
+      });
+    }
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        onProgress(percent);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          resolve(res);
+        } catch (e) {
+          resolve({ path });
+        }
+      } else {
+        let errorMsg = 'Upload failed';
+        try {
+          const res = JSON.parse(xhr.responseText);
+          errorMsg = res.message || errorMsg;
+        } catch (e) {}
+        reject(new Error(`${errorMsg} (Status ${xhr.status})`));
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('Network error during upload.'));
+    };
+
+    xhr.send(file);
+  });
+}
+
+function generateVideoThumbnail(file) {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    video.src = URL.createObjectURL(file);
+    
+    video.onloadedmetadata = () => {
+      if (video.duration > 60) {
+        resolve({ error: 'Video duration exceeds 60 seconds.' });
+        return;
+      }
+      video.currentTime = Math.min(1.0, video.duration / 2);
+    };
+    
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          resolve({
+            blob,
+            duration: video.duration,
+            width: video.videoWidth,
+            height: video.videoHeight,
+            url: URL.createObjectURL(blob)
+          });
+        }, 'image/jpeg', 0.85);
+      } catch (err) {
+        console.error('Failed to generate thumbnail via canvas:', err);
+        resolve({ error: null, duration: video.duration, width: video.videoWidth || 640, height: video.videoHeight || 480 });
+      }
+    };
+    
+    video.onerror = () => {
+      resolve({ error: 'Failed to load video file.' });
+    };
+  });
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function CreatePostForm() {
@@ -94,6 +193,15 @@ export default function CreatePostForm() {
   const [category, setCategory]         = useState('discussion');
   const [imageFile, setImageFile]       = useState(null);
   const [imagePreview, setImagePreview] = useState('');
+  const [videoFile, setVideoFile]       = useState(null);
+  const [videoPreview, setVideoPreview] = useState('');
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [videoWidth, setVideoWidth]     = useState(0);
+  const [videoHeight, setVideoHeight]   = useState(0);
+  const [thumbnailBlob, setThumbnailBlob] = useState(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [abortController, setAbortController] = useState(null);
   const [pollOptions, setPollOptions]   = useState(['', '']);
   const [eventDate, setEventDate]       = useState('');
   const [locationName, setLocationName] = useState('');
@@ -163,6 +271,12 @@ export default function CreatePostForm() {
       console.groupEnd();
       return;
     }
+    if (postType === 'video' && !videoFile) {
+      tValidate.fail('video file is missing');
+      setError('Please select a video file.');
+      console.groupEnd();
+      return;
+    }
     if (!user) {
       tValidate.fail('user not authenticated');
       console.error('[CREATE-POST] ✘ No user in auth store — redirecting to login');
@@ -174,6 +288,7 @@ export default function CreatePostForm() {
 
     setIsSubmitting(true);
     setUploadStatus('Preparing post...');
+    setUploadProgress(0);
 
     try {
       const tFormData = T('build-formdata');
@@ -207,8 +322,8 @@ export default function CreatePostForm() {
           const path = `${user.id}/${Date.now()}.${ext}`;
 
           const { error: upErr } = await supabase.storage
-            .from('tapri-images')
-            .upload(path, fileToUpload, { contentType: fileToUpload.type });
+              .from('tapri-images')
+              .upload(path, fileToUpload, { contentType: fileToUpload.type });
 
           if (upErr) throw new Error(`Storage upload failed: ${upErr.message}`);
 
@@ -223,6 +338,78 @@ export default function CreatePostForm() {
           formData.set('post_type', 'discussion');
           formData.delete('image_url');
         }
+      }
+
+      // Handle video upload synchronously
+      if (postType === 'video' && videoFile) {
+        const supabase = getSupabaseClient();
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (!token) throw new Error('Authentication session token is invalid or expired.');
+
+        const controller = new AbortController();
+        setAbortController(controller);
+
+        const videoExt = videoFile.name.split('.').pop()?.toLowerCase() || 'mp4';
+        const videoPath = `videos/${user.id}/${Date.now()}_video.${videoExt}`;
+
+        try {
+          setUploadStatus('Uploading video (0%)...');
+          await uploadToSupabaseWithProgress(
+            'RAMBHAHOO',
+            videoPath,
+            videoFile,
+            token,
+            (pct) => {
+              setUploadProgress(pct);
+              setUploadStatus(`Uploading video (${pct}%)...`);
+            },
+            controller.signal
+          );
+        } catch (upErr) {
+          if (upErr.name === 'AbortError') {
+            throw new Error('Upload cancelled by user.');
+          }
+          throw upErr;
+        }
+
+        // Upload generated thumbnail poster image
+        let thumbnailUrl = '';
+        if (thumbnailBlob) {
+          setUploadStatus('Generating & uploading thumbnail...');
+          const thumbPath = `thumbnails/${user.id}/${Date.now()}_thumb.jpg`;
+          try {
+            await uploadToSupabaseWithProgress(
+              'RAMBHAHOO',
+              thumbPath,
+              thumbnailBlob,
+              token,
+              null,
+              controller.signal
+            );
+            const { data: thumbUrlData } = supabase.storage.from('RAMBHAHOO').getPublicUrl(thumbPath);
+            thumbnailUrl = thumbUrlData?.publicUrl || '';
+          } catch (thumbErr) {
+            console.warn('[CREATE-POST] Thumbnail upload failed:', thumbErr);
+          }
+        }
+
+        const { data: videoUrlData } = supabase.storage.from('RAMBHAHOO').getPublicUrl(videoPath);
+        if (!videoUrlData?.publicUrl) throw new Error('Failed to generate public URL for video.');
+
+        formData.set('video_url', videoUrlData.publicUrl);
+
+        const videoMetadata = {
+          thumbnail_url: thumbnailUrl,
+          duration: videoDuration,
+          file_size: videoFile.size,
+          mime_type: videoFile.type,
+          width: videoWidth,
+          height: videoHeight,
+          upload_timestamp: new Date().toISOString()
+        };
+        formData.set('video_metadata', JSON.stringify(videoMetadata));
+        setAbortController(null);
       }
 
       if (postType === 'poll') {
@@ -254,6 +441,8 @@ export default function CreatePostForm() {
     } finally {
       setIsSubmitting(false);
       setUploadStatus('');
+      setUploadProgress(0);
+      setAbortController(null);
       console.groupEnd();
     }
   };
@@ -275,6 +464,64 @@ export default function CreatePostForm() {
     setImagePreview('');
   };
 
+  const handleVideoChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Supported MIME types: mp4, mov (video/quicktime), webm
+    const allowedTypes = ['video/mp4', 'video/quicktime', 'video/webm'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('Unsupported video format. Please upload an MP4, MOV, or WebM video.');
+      toast.error('Unsupported video format');
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      setError('Video file exceeds the 50 MB limit.');
+      toast.error('Video too large (Max 50 MB)');
+      return;
+    }
+
+    setError('');
+    setUploadStatus('Analyzing video...');
+    
+    try {
+      const metadata = await generateVideoThumbnail(file);
+      if (metadata.error) {
+        setError(metadata.error);
+        toast.error(metadata.error);
+        return;
+      }
+      
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+      setVideoDuration(metadata.duration);
+      setVideoWidth(metadata.width);
+      setVideoHeight(metadata.height);
+      
+      if (metadata.blob) {
+        setThumbnailBlob(metadata.blob);
+        setThumbnailPreview(metadata.url);
+      }
+    } catch (err) {
+      console.error('Failed to validate video:', err);
+      setError('Failed to process video file.');
+    } finally {
+      setUploadStatus('');
+    }
+  };
+
+  const removeVideo = () => {
+    setVideoFile(null);
+    setVideoPreview('');
+    setVideoDuration(0);
+    setVideoWidth(0);
+    setVideoHeight(0);
+    setThumbnailBlob(null);
+    setThumbnailPreview('');
+    setError('');
+  };
+
   return (
     <div className="max-w-2xl mx-auto mt-6 bg-bg-card rounded-2xl border border-border p-6 shadow-md">
       <h1 className="text-2xl font-bold text-text-primary font-[family-name:var(--font-poppins)] mb-6">
@@ -291,7 +538,7 @@ export default function CreatePostForm() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Post Type Selector */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {POST_TYPES.map((t) => (
             <button
               key={t.value}
@@ -305,9 +552,10 @@ export default function CreatePostForm() {
             >
               {t.value === 'discussion' && <MessageSquare size={24} />}
               {t.value === 'image'      && <ImageIcon size={24} />}
+              {t.value === 'video'      && <Video size={24} />}
               {t.value === 'poll'       && <BarChart3 size={24} />}
               {t.value === 'event'      && <Calendar size={24} />}
-              <span className="text-sm font-medium">{t.label}</span>
+              <span className="text-xs font-semibold">{t.label}</span>
             </button>
           ))}
         </div>
@@ -371,6 +619,45 @@ export default function CreatePostForm() {
                 >
                   <X size={16} />
                 </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Video Upload (video) */}
+        {postType === 'video' && (
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1.5">
+              Upload Video (MP4, MOV, WebM - Max 50 MB, 60s) <span className="text-accent-red">*</span>
+            </label>
+            {!videoPreview ? (
+              <input
+                type="file"
+                accept="video/mp4,video/quicktime,video/webm"
+                onChange={handleVideoChange}
+                required
+                className="w-full bg-bg-elevated border border-border rounded-xl px-4 py-2.5 text-text-primary file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-primary/10 file:text-blue-primary hover:file:bg-blue-primary/20 transition-all cursor-pointer"
+              />
+            ) : (
+              <div className="relative rounded-xl overflow-hidden border border-border bg-bg-elevated flex flex-col items-center p-4">
+                <div className="w-full max-w-xs aspect-[4/5] rounded-xl overflow-hidden bg-black relative">
+                  <video src={videoPreview} controls className="w-full h-full object-cover" />
+                  {thumbnailPreview && (
+                    <div className="absolute top-2 left-2 bg-blue-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow z-15">
+                      Poster Frame generated
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 flex items-center justify-between w-full max-w-xs text-sm">
+                  <span className="text-text-muted font-medium">Duration: {Math.round(videoDuration)}s</span>
+                  <button
+                    type="button"
+                    onClick={removeVideo}
+                    className="flex items-center gap-1 text-accent-red font-semibold hover:underline"
+                  >
+                    <X size={14} /> Remove
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -529,22 +816,48 @@ export default function CreatePostForm() {
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="pt-4 border-t border-border flex gap-3 justify-end items-center">
-          {isSubmitting && uploadStatus && (
-            <span className="text-sm text-text-dim mr-auto animate-pulse">{uploadStatus}</span>
+        {/* Progress Bar & Actions */}
+        <div className="pt-4 border-t border-border flex flex-col gap-4">
+          {isSubmitting && uploadProgress > 0 && (
+            <div className="w-full bg-bg-elevated rounded-xl p-3 border border-border">
+              <div className="flex justify-between items-center text-xs font-semibold mb-1 text-text-muted">
+                <span>{uploadStatus}</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className="w-full h-2 bg-border rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-blue-primary transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              {abortController && (
+                <button
+                  type="button"
+                  onClick={() => abortController.abort()}
+                  className="text-xs text-accent-red font-semibold hover:underline mt-2 flex items-center gap-1"
+                >
+                  <X size={12} /> Cancel Upload
+                </button>
+              )}
+            </div>
           )}
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => router.back()}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
-            Post
-          </Button>
+          
+          <div className="flex gap-3 justify-end items-center w-full">
+            {isSubmitting && uploadStatus && uploadProgress === 0 && (
+              <span className="text-sm text-text-dim mr-auto animate-pulse">{uploadStatus}</span>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => router.back()}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
+              Post
+            </Button>
+          </div>
         </div>
       </form>
     </div>

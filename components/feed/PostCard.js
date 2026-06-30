@@ -4,6 +4,7 @@ import DiscussionCard from './DiscussionCard';
 import ImageCard from './ImageCard';
 import PollCard from './PollCard';
 import EventCard from './EventCard';
+import VideoCard from './VideoCard';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { memo } from 'react';
 
@@ -14,6 +15,9 @@ function PostCard({ post, priority = false }) {
   switch (post.post_type) {
     case 'image':
       content = <ImageCard post={post} priority={priority} />;
+      break;
+    case 'video':
+      content = <VideoCard post={post} />;
       break;
     case 'poll':
       content = <PollCard post={post} />;
